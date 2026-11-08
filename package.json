@@ -1,0 +1,45 @@
+{
+  "name": "profile-workspace",
+  "productName": "Profile Workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local browser profiles, cookies and proxies without subscriptions",
+  "author": "Biomistik",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "build": "tsc -p tsconfig.electron.json && tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "pack": "npm run build && electron-builder --win --dir",
+    "dist": "npm run build && electron-builder --win portable"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "3.14.26",
+    "lucide-react": "1.70.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.6",
+    "vitest": "5.1.0"
+  },
+  "overrides": { "minimatch": "11.0.1" },
+  "build": {
+    "appId": "tech.biomistik.profileworkspace",
+    "productName": "Profile Workspace",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "dist-electron/**/*", "assets/**/*", "package.json"],
+    "win": { "target": "portable", "icon": "assets/icon.ico", "signExecutable": false },
+    "portable": { "artifactName": "Profile-Workspace-${version}.exe" }
+  }
+}

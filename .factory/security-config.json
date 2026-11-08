@@ -1,0 +1,16 @@
+{
+  "threat_model_version": "1.0.0",
+  "last_updated": "2026-11-08",
+  "security_team_contacts": [],
+  "compliance_requirements": [],
+  "scan_frequency": "on_commit",
+  "severity_thresholds": {
+    "block_merge": ["HIGH", "CRITICAL"],
+    "require_review": ["HIGH", "CRITICAL"],
+    "notify_security_team": []
+  },
+  "vulnerability_patterns": {
+    "enabled": ["xss", "command_injection", "path_traversal", "auth_bypass", "idor", "secret_exposure", "prompt_injection", "proxy_bypass"],
+    "custom_patterns_path": null
+  }
+}

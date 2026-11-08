@@ -1,0 +1,30 @@
+{
+  "scan_id": "scan-2026-11-08-publication-001",
+  "scan_date": "2026-11-08",
+  "scan_type": "staged",
+  "commit_range": "initial-tree",
+  "pr_number": null,
+  "threat_model_version": "1.0.0",
+  "findings": [],
+  "summary": {
+    "total_findings": 0,
+    "by_severity": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
+    "by_stride": { "Spoofing": 0, "Tampering": 0, "Repudiation": 0, "InfoDisclosure": 0, "DoS": 0, "ElevationOfPrivilege": 0 },
+    "files_analyzed": 49
+  },
+  "verification": {
+    "secret_pattern_scan": "No secret patterns or personal absolute paths found in staged text; synthetic test-only credentials reviewed.",
+    "publication_inventory": "Source, documentation, screenshots, icons, tests and lockfile only; no browser data, original vendor binaries, dependencies, caches or credential files staged.",
+    "source_review": "Reviewed IPC sender/frame authorization, remote sandboxing, URL/path validation, secret boundaries, import/rollback and proxy controls against the threat model. No SQL, production shell execution, eval or untrusted HTML templates were found.",
+    "instructions_review": "Reviewed published project documents and instructions; no embedded requests to exfiltrate secrets or override system permissions found.",
+    "build": "passed",
+    "unit_tests": "11 passed",
+    "electron_ui_integration_tests": "14 passed",
+    "dependency_audit": "0 known vulnerabilities in the latest full npm audit"
+  },
+  "limitations": [
+    "Manual source review and regression tests are not a proof of absence of vulnerabilities.",
+    "Unsigned binaries, same-user Windows malware, explicit plaintext cookie exports and other documented product limitations remain accepted risks.",
+    "No external penetration testing or scanning was performed."
+  ]
+}

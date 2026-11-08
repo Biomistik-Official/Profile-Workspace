@@ -1,0 +1,16 @@
+import { useState, type FormEvent } from 'react';
+import { FolderOpen, ShieldCheck, SlidersHorizontal, Info } from 'lucide-react';
+import type { Settings, WorkspaceSnapshot } from '../../shared/types';
+export function SettingsPage({ snapshot, save, notify }: { snapshot: WorkspaceSnapshot; save: (settings: Settings) => Promise<void>; notify: (message: string) => void }) {
+  const [settings, setSettings] = useState(snapshot.settings); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); try { await save(settings); notify('Настройки сохранены.'); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
+  return <div className="settings-page"><header className="page-header"><div><h1>Настройки</h1><p>Поведение приложения и локальные данные.</p></div></header>
+    <form className="settings-card" onSubmit={submit}><div className="settings-heading"><SlidersHorizontal size={21} /><div><h2>Запуск профилей</h2><p>Настройте нагрузку под свой компьютер.</p></div></div>
+      <div className="form-grid"><label>Параллельных запусков<input type="number" min={1} max={20} required value={settings.maxConcurrent} onChange={e => setSettings(s => ({ ...s, maxConcurrent: Number(e.target.value) }))} /><small>Одновременные операции запуска, не лимит профилей.</small></label><label>Интервал между запусками, мс<input type="number" min={0} max={10000} step={100} required value={settings.launchDelayMs} onChange={e => setSettings(s => ({ ...s, launchDelayMs: Number(e.target.value) }))} /></label></div>
+      <label>Стартовая страница новых профилей<input type="url" required value={settings.defaultUrl} onChange={e => setSettings(s => ({ ...s, defaultUrl: e.target.value }))} /></label>
+      {error && <div className="error-box" role="alert">{error}</div>}<div><button className="button primary" disabled={busy}>{busy ? 'Сохранение…' : 'Сохранить настройки'}</button></div>
+    </form>
+    <section className="settings-card"><div className="settings-heading"><ShieldCheck size={21} /><div><h2>Данные на устройстве</h2><p>Без аккаунта, облачной синхронизации и API Dolphin.</p></div></div><p>Cookies и хранилища сайтов разделены по профилям. Пароли прокси и снимки session cookies защищены средствами Windows.</p><p className="data-path">{snapshot.dataPath}</p><div><button className="button secondary" onClick={() => void window.workspace.revealData().catch(e => notify(e.message))}><FolderOpen size={17} />Открыть папку данных</button></div><p className="form-hint">Для резервной копии закройте приложение и скопируйте папку целиком. Шифрованные данные могут быть недоступны под другим пользователем Windows.</p></section>
+    <section className="settings-card"><div className="settings-heading"><Info size={21} /><div><h2>Браузер и отпечатки</h2><p>Profile Workspace {snapshot.version}</p></div></div><p>Используется встроенный Chromium. Разделение профилей изолирует cookies и данные сайтов; полноценная подмена браузерного отпечатка пока не реализована.</p><p className="form-hint">Обновления движка устанавливаются с новой версией приложения. Расширения Chrome и совместимость со всеми сайтами пока не гарантируются.</p></section>
+  </div>;
+}

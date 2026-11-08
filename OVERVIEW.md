@@ -1,0 +1,45 @@
+# Dolphin Anty REA
+
+## Purpose and current state
+
+Implemented Profile Workspace, a standalone Windows browser-profile manager. The user chose an independent implementation, then clarified that a one-to-one copy is unnecessary: use the product idea and improve the design with UI/UX Pro Max. Advertising and artificial profile limits are unwanted. Separate profiles, persistent sessions, per-profile proxies, tags, notes, bulk launch, and cookies are explicitly important. Full fingerprint functionality remains a separate research topic.
+
+## Proposed product design
+
+- [Design proposal](docs/superpowers/specs/2026-11-08-profile-workspace-design.md): approved by the user before implementation; scope, workflows, cookie semantics, launch queue, architecture boundaries, and acceptance criteria.
+- [Static interface concept](docs/design/profile-workspace-concept.png): graphite desktop table and profile detail panel with teal accents; fictional data only. Visually inspected after rendering at 2880×1880. It does not demonstrate executable behavior.
+- The brainstorming builder check found no important unanswered planning questions. This is a design review, not implementation verification.
+
+The user approved the graphite/teal concept. UI/UX Pro Max's Minimalism & Swiss Style and bulk-selection guidance fit; its marketing-page layout suggestions did not fit and were discarded. [Running interface screenshot](docs/design/profile-workspace-running.png) uses fictional data in an isolated temporary workspace.
+
+## Architecture and entry points
+
+- `electron/main.ts`: lifecycle, trusted IPC, profile/session ownership, Windows safeStorage, native dialogs, cookie import/export and proxy probes.
+- `electron/browser.ts`: profile browser windows and unprivileged WebContentsView tabs. Each remote view sets `disable_non_proxied_udp`.
+- `electron/preload.ts`: allowlisted renderer bridge; main enforces manager-only versus browser-only calls by sender and frame identity.
+- `electron/cookie-service.ts`: cookie conversion, replace/merge with rollback on browser rejection.
+- `core/store.ts`: serialized mutations and atomic JSON replacement; secrets enter through an injected encryption codec. Public snapshots omit encrypted password payloads.
+- `core/cookies.ts`, `core/validation.ts`: JSON/Netscape exchange and validation. Unsupported partition keys are rejected explicitly.
+- `core/queue.ts`: deduplicated, cancellable start queue with concurrency and interval controls.
+- `src/App.tsx`, `src/components/`, `src/styles.css`: React UI, virtualized profile table, detail panel, native-dialog-backed import workflow, forms and browser toolbar.
+- `shared/types.ts`: runtime/renderer contracts. `package.json` points to compiled `dist-electron/electron/main.js`.
+
+Data flow: manager UI → preload → sender-checked main handler → store/session/browser controller → snapshot event. Site pages have sandboxing and context isolation, no Node integration or privileged preload. Persistent partitions are named `persist:profile-<validated UUID>`, separate from `persist:workspace-ui`.
+
+Saved session cookies are hydrated once through a cached promise before cookie reads, mutations, duplication and launch. Shutdown awaits and saves only successfully hydrated sessions; a failed hydration cannot overwrite its original encrypted snapshot. Actual save failure keeps the manager open for recovery.
+
+## Reference research
+
+The project was inspired by the workflow of Dolphin Anty. Read-only research on separate temporary copies informed the product design; no original executable, extracted implementation, user profile, cookie database or authentication token is included. This project uses its own Electron/React implementation and does not use Dolphin services.
+
+## Data and known limits
+
+Each profile owns its Chromium storage and proxy configuration. Persistent cookies and Local Storage survive restart; session-cookie restoration is an explicit per-profile option. Passwords and session snapshots use asynchronous Windows safeStorage. Metadata uses atomic JSON rather than SQLite. Duplication copies settings and cookies only; it does not copy Local Storage/IndexedDB. Cookie-only transfer cannot be assumed to preserve every site's login.
+
+SOCKS5 authentication, partitioned-cookie exchange, full fingerprint spoofing, extensions, cloud sync and automatic engine updates are not implemented. Site camera/microphone/location/notification requests are currently denied. Proxy preflight and IP checks use ipify; failed checks never substitute direct access. See README for user-facing limitations, backup and import/export semantics.
+
+## Commands and constraints
+
+`npm ci` installs pinned dependencies. `npm run build` compiles Electron TypeScript and the Vite renderer; `npm start` runs the built app. `npm test` runs unit tests, `npm run test:e2e` runs real Electron/Playwright integration tests, `npm run dist` builds the Windows portable executable. Node 22.22.2 was used. The HTTP proxy E2E requires outbound network access to ipify. The default user data directory is Electron's application userData path; `PROFILE_WORKSPACE_DATA_DIR` intentionally overrides it for isolated instances and tests.
+
+Latest implementation verification: build passed; 11 unit tests and 14 integration/UI tests passed; full npm audit reported zero vulnerabilities. UI screenshots inspected at 1440×900 and 1024×768. Independent code review found four cookie/network issues; each was reproduced with a failing regression, fixed and verified. Portable executable built; packaged payload smoke passed. Normal-data app opened and desktop shortcut verified. Exact artifacts, hash, decisions and practical limitations are in [delivery report](docs/delivery-2026-11-08.md). The initial public publication is prepared from this verified source. Reference research remains static evidence; no proprietary reference code is included in the product.
