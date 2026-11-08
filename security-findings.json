@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-08-socks-publication-002",
+  "scan_id": "scan-2026-11-08-lifecycle-publication-003",
   "scan_date": "2026-11-08",
   "scan_type": "working",
-  "commit_range": "18d02ff..working-tree",
+  "commit_range": "1ec768c..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -14,7 +14,7 @@
       "MEDIUM": 0
     },
     "total_findings": 0,
-    "files_analyzed": 20,
+    "files_analyzed": 9,
     "by_stride": {
       "DoS": 0,
       "ElevationOfPrivilege": 0,
@@ -26,14 +26,14 @@
   },
   "verification": {
     "build": "passed",
-    "independent_review": "No consequential findings.",
-    "packaged_proxy_tests": "3 passed",
+    "independent_review": "Author reviewed the complete small lifecycle diff; no consequential remaining findings.",
+    "packaged_proxy_tests": "4 packaged lifecycle/proxy tests passed",
     "dependency_audit": "0 known vulnerabilities",
-    "electron_ui_integration_tests": "16 passed",
+    "electron_ui_integration_tests": "17 passed",
     "publication_inventory": "Explicit source/docs/test/lockfile changes only. No user profiles, cookies, account credentials, vendor binaries, dependencies or build caches staged. Synthetic test credentials reviewed.",
     "unit_tests": "16 passed",
-    "source_review": "Reviewed the complete authenticated SOCKS5 diff, new bridge and fixtures against the updated threat model. Loopback authentication, mandatory upstream routing, remote DNS, session cleanup, encrypted secrets, byte limits and existing manager IPC checks remain enforced. No new SQL, command execution, eval or untrusted HTML templates.",
-    "instructions_review": "Reviewed new design, plan and setup instructions. No embedded exfiltration or system-policy override instructions."
+    "source_review": "Reviewed second-instance lifetime guard, regression, version bump and docs. Fix prevents a reproduced use-after-destroy exception; no changes to authentication, secret storage, IPC, proxy routing, SQL, shell execution or HTML sinks.",
+    "instructions_review": "Reviewed updated release/setup documentation; no exfiltration instructions or private data."
   },
   "limitations": [
     "Manual source review and tests do not prove absence of vulnerabilities.",

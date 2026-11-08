@@ -291,7 +291,11 @@ app.on('login', (event, webContents, _details, auth, callback) => {
 });
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => { if (manager) { if (manager.isMinimized()) manager.restore(); manager.focus(); } });
+  app.on('second-instance', () => {
+    if (quitting || !manager || manager.isDestroyed()) return;
+    if (manager.isMinimized()) manager.restore();
+    manager.focus();
+  });
   app.whenReady().then(async () => {
     store = await WorkspaceStore.open(join(dataRoot, 'workspace.json'), { seal: encrypt, open: decrypt });
     if (quitting) { app.quit(); return; }

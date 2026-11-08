@@ -41,6 +41,8 @@ Authenticated SOCKS5 is supported starting with local version 0.1.1; passwords r
 
 ## Commands and constraints
 
+Version 0.1.2 guards second-instance handling against shutdown and destroyed manager windows. `tests/e2e/lifecycle.spec.ts` reproduces the stale-window exception. An already-running older binary must be closed before launching the update; fixes in a downloaded binary cannot change its existing single-instance handler.
+
 `npm ci` installs pinned dependencies. `npm run build` compiles Electron TypeScript and the Vite renderer; `npm start` runs the built app. `npm test` runs unit tests, `npm run test:e2e` runs real Electron/Playwright integration tests, `npm run dist` builds the Windows portable executable. Node 22.22.2 was used. The HTTP proxy E2E requires outbound network access to ipify. The default user data directory is Electron's application userData path; `PROFILE_WORKSPACE_DATA_DIR` intentionally overrides it for isolated instances and tests.
 
 Version 0.1.1 verification: build passed; 16 unit tests and 16 Electron integration/UI tests passed; full npm audit reported zero vulnerabilities. Three proxy tests also passed against the packaged 0.1.1 payload, with app.isPackaged verified. They cover authenticated SOCKS5 IP checks, real HTTP browser traffic, remote DNS, stop/restart and port closure, rejected credentials without direct access, and the existing authenticated HTTP path. Independent review found no consequential issues. Actual NordVPN connectivity requires the user's service credentials and remains unverified.

@@ -9,7 +9,7 @@ import { socksServer } from '../helpers/socks-server';
 async function launchWorkspace(data: string) {
   const executablePath = process.env.PROFILE_WORKSPACE_TEST_EXECUTABLE;
   const application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: data } });
-  if (executablePath) expect(await application.evaluate(({ app }) => ({ packaged: app.isPackaged, version: app.getVersion() }))).toEqual({ packaged: true, version: '0.1.1' });
+  if (executablePath) expect(await application.evaluate(({ app }) => ({ packaged: app.isPackaged, version: app.getVersion() }))).toEqual({ packaged: true, version: process.env.PROFILE_WORKSPACE_TEST_VERSION ?? '0.1.2' });
   return application;
 }
 
