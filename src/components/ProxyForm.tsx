@@ -13,7 +13,7 @@ export function ProxyForm({ proxy, save, close }: { proxy?: ProxyInfo; save: (dr
     <label>Сервер<input required value={host} onChange={e => setHost(e.target.value)} placeholder="proxy.example.com или 127.0.0.1" /></label>
     <div className="form-grid"><label>Логин<input autoComplete="off" value={username} onChange={e => setUsername(e.target.value)} /></label><label>Пароль<input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder={proxy?.hasPassword ? 'Сохранён · пусто = оставить' : 'Необязательно'} /></label></div>
     {proxy?.hasPassword && <label className="check-label"><input type="checkbox" checked={clear} onChange={e => setClear(e.target.checked)} /><span>Удалить сохранённый пароль</span></label>}
-    <p className="form-hint">Пароль шифруется средствами Windows. SOCKS5 с авторизацией пока не поддерживается. При недоступном прокси профиль не выходит в сеть напрямую.</p>
+    <p className="form-hint">Пароль шифруется средствами Windows. SOCKS5 поддерживает логин и пароль. Для NordVPN используйте Service credentials из Nord Account. При недоступном прокси профиль не выходит в сеть напрямую.</p>
     {error && <div className="error-box" role="alert">{error}</div>}
     <footer className="modal-actions"><button type="button" className="button secondary" onClick={close}>Отмена</button><button className="button primary" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить прокси'}</button></footer>
   </form></Modal>;

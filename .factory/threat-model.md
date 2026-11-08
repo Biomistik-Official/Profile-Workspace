@@ -1,6 +1,6 @@
 # Threat Model for Profile Workspace
 
-Last updated: 2026-11-08. Version: 1.0.0. Methodology: STRIDE and source-level data-flow review.
+Last updated: 2026-11-08. Version: 1.1.0. Methodology: STRIDE and source-level data-flow review.
 
 ## 1. System Overview
 
@@ -13,6 +13,7 @@ Entry points are `electron/main.ts`, `electron/preload.ts`, `electron/browser.ts
 1. Untrusted: websites, redirects, popups, proxy responses and imported cookie files. Website JavaScript must never gain filesystem, shell, secret-store or manager IPC privileges.
 2. Local control: the packaged manager and browser-toolbar renderers. A compromised toolbar must not invoke manager-only methods. IPC validates both webContents identity and the top-level frame.
 3. Privileged: Electron main process, validated metadata store, Windows safeStorage and Chromium partitions. Files written by the current Windows user are not treated as protection against malware running as that same user.
+4. Local SOCKS5 bridge: each authenticated SOCKS5 session owns an HTTP listener on 127.0.0.1 with an ephemeral port and random local credentials. It always forwards to the configured SOCKS upstream; service credentials remain in main-process memory. Unauthenticated local requests receive 407. Bridge lifecycle follows proxy checks and profile sessions; HTTP target domains use remote SOCKS DNS.
 
 There is no account-based authentication: access is the local Windows user's access. Profile IDs are generated UUIDs and checked against store membership before partition/file use. Web navigation accepts only HTTP(S); privileged renderer navigation and new-window creation are denied.
 
@@ -25,6 +26,7 @@ There is no account-based authentication: access is the local Windows user's acc
 | Remote sites | Sandboxed WebContentsView, no Node/preload, webSecurity enabled, permissions denied | network → browser |
 | Cookie files | Native picker, 10 MiB limit before read, schema/domain/value validation, explicit unsupported-attribute errors | filesystem → cookie store |
 | Proxy settings | Protocol/host/port validation; credentials supplied only for matching proxy host/port | user → network |
+| SOCKS5 bridge | Loopback bind, random local authentication, mandatory upstream, UTF-8 credential byte limit, no verbose secret logging | Chromium → Node → SOCKS5 |
 | IP checking | HTTPS ipify request through configured session, bounded response and timeout, no direct fallback | proxy → main |
 | Local persistence | Atomic JSON replacement, encrypted secrets, successful-hydration-only snapshot writes | main → filesystem |
 | Downloads/exports | Native save dialogs and explicit user action | browser/main → filesystem |
@@ -71,8 +73,10 @@ Unit tests cover cookie validation/round trips, metadata/reference integrity, pr
 
 ## 8. Assumptions and Accepted Risks
 
-The current Windows user, OS credential provider and installed Chromium/Electron runtime are trusted. Public binaries are unsigned. Full anti-detection, CHIPS exchange, SOCKS5 authentication, richer permission prompts, extension compatibility, cloud sync and automatic engine updates are not implemented. Proxy preflight depends on ipify availability. Account servers may revoke a login regardless of local cookie retention. Tests on a separate clean Windows installation and every external provider have not been performed.
+The current Windows user, OS credential provider and installed Chromium/Electron runtime are trusted. Public binaries are unsigned. Full anti-detection, CHIPS exchange, richer permission prompts, extension compatibility, cloud sync and automatic engine updates are not implemented. SOCKS5 authentication is supported through pinned proxy-chain 2.7.1; SOCKS5 transport itself is not VPN encryption. Proxy preflight depends on ipify availability. Account servers may revoke a login regardless of local cookie retention. Tests on a separate clean Windows installation and every external provider, including actual NordVPN service credentials, have not been performed.
 
 ## 9. Version Changelog
 
 1.0.0 — initial publication model based on the implemented 0.1.0 source and its existing regression suite. No external targets were scanned.
+
+1.1.0 — authenticated SOCKS5 loopback bridge, credential and remote-DNS boundaries, per-session cleanup. No external targets were scanned.

@@ -8,6 +8,7 @@ import { parseCookies, serializeCookies } from '../core/cookies';
 import type { CookieFormat, PortableCookie, ProfileDraft, ProxyCheck, ProxyDraft, RuntimeState, Settings, WorkspaceSnapshot } from '../shared/types';
 import { ProfileBrowser } from './browser';
 import { portableCookie, replaceOrMergeCookies } from './cookie-service';
+import { startSocksBridge, type SocksBridge } from './socks-bridge';
 
 app.setName('Profile Workspace');
 if (process.env.PROFILE_WORKSPACE_DATA_DIR) app.setPath('userData', process.env.PROFILE_WORKSPACE_DATA_DIR);
@@ -24,6 +25,7 @@ const hydratedSessions = new Map<string, Promise<Session>>();
 const mutations = new Set<string>();
 const cancelledStarts = new Set<string>();
 const sessionCredentials = new Map<Session, { host: string; port: number; username: string; password: string }>();
+const socksBridges = new Map<Session, SocksBridge>();
 const cookiePreviews = new Map<string, { profileId: string; cookies: PortableCookie[]; createdAt: number }>();
 const loginAttempts = new Map<number, number>();
 const queue = new LaunchQueue(startProfile, publish);
@@ -74,11 +76,22 @@ function profileSession(id: string): Session {
   }
   return ses;
 }
+async function releaseProxy(ses: Session): Promise<void> {
+  const bridge = socksBridges.get(ses); socksBridges.delete(ses); sessionCredentials.delete(ses);
+  try { await ses.closeAllConnections(); } finally { await bridge?.close(); }
+}
 async function configureProxy(ses: Session, proxyId: string | null): Promise<void> {
-  await ses.closeAllConnections(); sessionCredentials.delete(ses);
+  await releaseProxy(ses);
   if (!proxyId) { await ses.setProxy({ mode: 'direct' }); return; }
   const p = store.proxy(proxyId); const credentials = await store.proxyCredentials(proxyId);
-  if (p.protocol === 'socks5' && (credentials.username || credentials.password)) throw new Error('SOCKS5 с авторизацией не поддерживается.');
+  if (p.protocol === 'socks5' && (credentials.username || credentials.password)) {
+    const bridge = await startSocksBridge(p, credentials); socksBridges.set(ses, bridge);
+    try {
+      await ses.setProxy({ mode: 'fixed_servers', proxyRules: bridge.proxyRules, proxyBypassRules: '<-loopback>' });
+      sessionCredentials.set(ses, bridge.credentials);
+    } catch (e) { await releaseProxy(ses); throw e; }
+    return;
+  }
   await ses.setProxy({ mode: 'fixed_servers', proxyRules: `${p.protocol}://${p.host}:${p.port}`, proxyBypassRules: '<-loopback>' });
   sessionCredentials.set(ses, { host: p.host.replace(/^\[|\]$/g, ''), port: p.port, ...credentials });
 }
@@ -146,7 +159,9 @@ async function startProfile(id: string): Promise<void> {
       proxyChecks[profile.proxyId] = { status: 'ok', ip, checkedAt: new Date().toISOString() };
     }
     if (cancelledStarts.has(id) || quitting) { runtime[id] = { status: 'stopped' }; return; }
-    const browser = new ProfileBrowser(profile, ses, renderer, () => saveSessionCookies(id, ses, true), () => { if (runtime[id]?.status === 'starting') cancelledStarts.add(id); browsers.delete(id); runtime[id] = { status: 'stopped' }; publish(); });
+    const browser = new ProfileBrowser(profile, ses, renderer, async () => {
+      try { await saveSessionCookies(id, ses, true); } finally { await releaseProxy(ses); }
+    }, () => { if (runtime[id]?.status === 'starting') cancelledStarts.add(id); browsers.delete(id); runtime[id] = { status: 'stopped' }; publish(); });
     browsers.set(id, browser);
     await browser.open();
     if (cancelledStarts.has(id) || browser.window.isDestroyed() || browsers.get(id) !== browser) { runtime[id] = { status: 'stopped' }; return; }
@@ -155,7 +170,10 @@ async function startProfile(id: string): Promise<void> {
     const cancelled = cancelledStarts.has(id) || quitting;
     const browser = browsers.get(id); if (browser) await browser.close().catch(() => {});
     runtime[id] = cancelled ? { status: 'stopped' } : { status: 'error', error: (e as Error).message }; publish();
-  } finally { cancelledStarts.delete(id); publish(); }
+  } finally {
+    if (!browsers.has(id)) { const ses = sessions.get(id); if (ses) await releaseProxy(ses); }
+    cancelledStarts.delete(id); publish();
+  }
 }
 async function stopProfiles(list: string[]): Promise<void> {
   queue.cancel(list);
@@ -199,12 +217,13 @@ function registerApi(): void {
   handle('saveProxy', async (input: ProxyDraft) => { const list = input.id ? store.snapshot().profiles.filter(p => p.proxyId === input.id).map(p => p.id) : []; await lockedProfiles(list, async () => { await store.saveProxy(input); if (input.id) delete proxyChecks[input.id]; }); });
   handle('deleteProxy', (id: string) => store.deleteProxy(id));
   handle('checkProxy', async (id: string) => {
+    if (quitting) throw new Error('Приложение закрывается.');
     store.proxy(id); if (proxyChecks[id]?.status === 'checking') throw new Error('Проверка уже выполняется.');
     proxyChecks[id] = { status: 'checking' }; publish();
     const ses = session.fromPartition(`proxy-check-${randomUUID()}`);
     try { await configureProxy(ses, id); const ip = await probeProxy(ses); proxyChecks[id] = { status: 'ok', ip, checkedAt: new Date().toISOString() }; }
     catch (e) { proxyChecks[id] = { status: 'error', error: (e as Error).message, checkedAt: new Date().toISOString() }; }
-    finally { await ses.closeAllConnections(); sessionCredentials.delete(ses); }
+    finally { await releaseProxy(ses); }
     return proxyChecks[id];
   });
   handle('saveSettings', async (input: Settings) => { await store.saveSettings(input); queue.configure(store.snapshot().settings); });
@@ -294,6 +313,7 @@ else {
       for (const id of Object.keys(runtime)) cancelledStarts.add(id);
       await Promise.all([...browsers.values()].map(b => b.close().catch(() => {})));
       await queue.idle();
+      await Promise.all([...socksBridges.keys()].map(ses => releaseProxy(ses)));
       let failed = false;
       // Retry after closing tabs; also persist sessions changed without launching a browser.
       for (const [id, hydration] of hydratedSessions) {

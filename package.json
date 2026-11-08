@@ -1,7 +1,7 @@
 {
   "name": "profile-workspace",
   "productName": "Profile Workspace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Local browser profiles, cookies and proxies without subscriptions",
   "author": "Biomistik",
@@ -18,6 +18,7 @@
   "dependencies": {
     "@tanstack/react-virtual": "3.14.26",
     "lucide-react": "1.70.0",
+    "proxy-chain": "2.7.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -33,13 +34,28 @@
     "vite": "8.3.6",
     "vitest": "5.1.0"
   },
-  "overrides": { "minimatch": "11.0.1" },
+  "overrides": {
+    "minimatch": "11.0.1"
+  },
   "build": {
     "appId": "tech.biomistik.profileworkspace",
     "productName": "Profile Workspace",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "dist-electron/**/*", "assets/**/*", "package.json"],
-    "win": { "target": "portable", "icon": "assets/icon.ico", "signExecutable": false },
-    "portable": { "artifactName": "Profile-Workspace-${version}.exe" }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "portable": {
+      "artifactName": "Profile-Workspace-${version}.exe"
+    }
   }
 }

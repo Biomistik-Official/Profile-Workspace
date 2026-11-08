@@ -83,7 +83,7 @@ export class WorkspaceStore {
       if (typeof username !== 'string' || username.length > 500 || input.password !== undefined && (typeof input.password !== 'string' || input.password.length > 2000)) throw new Error('Неверные учётные данные прокси.');
       const previous = old?.secret ? JSON.parse(await this.codec.open(old.secret)) : { password: '' };
       const password = input.clearPassword ? '' : input.password === undefined || input.password === '' ? previous.password : input.password;
-      if (input.protocol === 'socks5' && (username || password)) throw new Error('SOCKS5 с логином и паролем пока не поддерживается этим движком. Используйте HTTP(S) или SOCKS5 без авторизации.');
+      if (input.protocol === 'socks5' && (Buffer.byteLength(username) > 255 || Buffer.byteLength(password) > 255)) throw new Error('SOCKS5: логин и пароль должны занимать не более 255 байт каждый.');
       const p: StoredProxy = { id: old?.id ?? randomUUID(), name: text(input.name, 'Название', 120), protocol: input.protocol, host: hostName(input.host), port: integer(input.port, 1, 65535, 'Порт'), username, hasPassword: !!password,
         secret: username || password ? await this.codec.seal(JSON.stringify({ username, password })) : '' };
       if (old) data.proxies[data.proxies.indexOf(old)] = p; else data.proxies.push(p);

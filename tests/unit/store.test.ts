@@ -8,6 +8,23 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('persists authenticated SOCKS5 credentials encrypted and preserves the password on edit', async () => {
+    const { file, store } = await setup();
+    const draft = { name: 'Nord', protocol: 'socks5' as const, host: 'nl.socks.nordhold.net', port: 1080, username: 'service-user' };
+    const proxy = await store.saveProxy({ ...draft, password: 'socks-private-secret' });
+    await store.saveProxy({ ...draft, id: proxy.id, name: 'Renamed' });
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(await loaded.proxyCredentials(proxy.id)).toEqual({ username: 'service-user', password: 'socks-private-secret' });
+    expect(await readFile(file, 'utf8')).not.toContain('socks-private-secret');
+    expect(JSON.stringify(loaded.snapshot())).not.toContain('socks-private-secret');
+  });
+  it('enforces SOCKS5 credential byte limits, including multibyte text', async () => {
+    const { store } = await setup();
+    const draft = { name: 'Socks', protocol: 'socks5' as const, host: 'localhost', port: 1080 };
+    await expect(store.saveProxy({ ...draft, username: 'u'.repeat(255), password: 'p'.repeat(255) })).resolves.toMatchObject({ hasPassword: true });
+    await expect(store.saveProxy({ ...draft, username: 'я'.repeat(128), password: 'p' })).rejects.toThrow('255');
+    await expect(store.saveProxy({ ...draft, username: 'u', password: 'p'.repeat(256) })).rejects.toThrow('255');
+  });
   it('persists concurrent profile writes and does not impose a profile count limit', async () => {
     const { file, store } = await setup();
     await Promise.all(Array.from({ length: 35 }, (_, i) => store.saveProfile({ name: `Profile ${i}`, notes: 'note', tags: ['work', 'work'] })));

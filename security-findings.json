@@ -1,30 +1,43 @@
 {
-  "scan_id": "scan-2026-11-08-publication-001",
+  "scan_id": "scan-2026-11-08-socks-publication-002",
   "scan_date": "2026-11-08",
-  "scan_type": "staged",
-  "commit_range": "initial-tree",
+  "scan_type": "working",
+  "commit_range": "18d02ff..working-tree",
   "pr_number": null,
-  "threat_model_version": "1.0.0",
+  "threat_model_version": "1.1.0",
   "findings": [],
   "summary": {
+    "by_severity": {
+      "LOW": 0,
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0
+    },
     "total_findings": 0,
-    "by_severity": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
-    "by_stride": { "Spoofing": 0, "Tampering": 0, "Repudiation": 0, "InfoDisclosure": 0, "DoS": 0, "ElevationOfPrivilege": 0 },
-    "files_analyzed": 49
+    "files_analyzed": 20,
+    "by_stride": {
+      "DoS": 0,
+      "ElevationOfPrivilege": 0,
+      "Repudiation": 0,
+      "Spoofing": 0,
+      "Tampering": 0,
+      "InfoDisclosure": 0
+    }
   },
   "verification": {
-    "secret_pattern_scan": "No secret patterns or personal absolute paths found in staged text; synthetic test-only credentials reviewed.",
-    "publication_inventory": "Source, documentation, screenshots, icons, tests and lockfile only; no browser data, original vendor binaries, dependencies, caches or credential files staged.",
-    "source_review": "Reviewed IPC sender/frame authorization, remote sandboxing, URL/path validation, secret boundaries, import/rollback and proxy controls against the threat model. No SQL, production shell execution, eval or untrusted HTML templates were found.",
-    "instructions_review": "Reviewed published project documents and instructions; no embedded requests to exfiltrate secrets or override system permissions found.",
     "build": "passed",
-    "unit_tests": "11 passed",
-    "electron_ui_integration_tests": "14 passed",
-    "dependency_audit": "0 known vulnerabilities in the latest full npm audit"
+    "independent_review": "No consequential findings.",
+    "packaged_proxy_tests": "3 passed",
+    "dependency_audit": "0 known vulnerabilities",
+    "electron_ui_integration_tests": "16 passed",
+    "publication_inventory": "Explicit source/docs/test/lockfile changes only. No user profiles, cookies, account credentials, vendor binaries, dependencies or build caches staged. Synthetic test credentials reviewed.",
+    "unit_tests": "16 passed",
+    "source_review": "Reviewed the complete authenticated SOCKS5 diff, new bridge and fixtures against the updated threat model. Loopback authentication, mandatory upstream routing, remote DNS, session cleanup, encrypted secrets, byte limits and existing manager IPC checks remain enforced. No new SQL, command execution, eval or untrusted HTML templates.",
+    "instructions_review": "Reviewed new design, plan and setup instructions. No embedded exfiltration or system-policy override instructions."
   },
   "limitations": [
-    "Manual source review and regression tests are not a proof of absence of vulnerabilities.",
-    "Unsigned binaries, same-user Windows malware, explicit plaintext cookie exports and other documented product limitations remain accepted risks.",
+    "Manual source review and tests do not prove absence of vulnerabilities.",
+    "Actual NordVPN account access, simultaneous distinct upstream accounts and separate clean Windows installations remain unverified.",
     "No external penetration testing or scanning was performed."
   ]
 }
