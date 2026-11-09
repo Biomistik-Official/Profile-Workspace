@@ -44,6 +44,8 @@ Authenticated SOCKS5 is supported starting with local version 0.1.1; passwords r
 
 ## Commands and constraints
 
+Version 0.1.6 verification: 27 unit tests and 22 Electron tests passed; four packaged parameter/UI/OAuth/safe-quit regressions passed. Production updater upgraded the installed 0.1.5 to 0.1.6, preserving profile metadata and proxy count. Generated profile parameters persisted across two installed-app launches. This verifies the first actual production update path.
+
 Version 0.1.4 fixes `getTitle` errors from destroyed tab contents. Browser shutdown clears the tab map before native close events; state/layout prune destroyed views and reconcile the active tab. New unit regressions reproduce synchronous close events and externally destroyed tabs; the sites integration test also destroys an actual native tab before stopping the profile.
 
 OAuth popups now use Electron's `createWindow` callback and adopt its supplied native WebContents into profile tabs. This preserves `window.opener`, sessionStorage, postMessage and script-initiated close across cross-origin redirects. Popup contents keep the current profile session, sandboxing and WebRTC policy without Node/preload privileges; only HTTP(S) and initial `about:blank` popups are accepted. `tests/e2e/oauth.spec.ts` covers the full local redirect/message/close flow, shared cookies, isolation and file-popup rejection. Live Twitch/Supercell account linking still requires user verification.

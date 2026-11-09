@@ -32,7 +32,8 @@
     "publication_inventory": "Source, synthetic tests and documentation only. No personal browser data, OAuth codes, credentials or third-party proprietary browser code.",
     "instructions_review": "Changed UI/docs/plans inspected; no exfiltration or prompt-injection instructions.",
     "packaged_regressions": "4 profile-parameter/UI/OAuth/safe-update-quit tests passed against packaged 0.1.6 payload",
-    "dependency_audit": "0 known production vulnerabilities"
+    "dependency_audit": "0 known production vulnerabilities",
+    "production_update": "Real installed 0.1.5 downloaded published 0.1.6 and installed on actual quit. Installed app reports 0.1.6; existing profile metadata hash and proxy count match pre-update, and parameters stay stable across two app launches."
   },
   "limitations": [
     "Basic Chromium emulation only: Canvas/WebGL/Audio/fonts/workers and other native hardware surfaces remain unchanged.",
