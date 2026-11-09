@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { FolderOpen, ShieldCheck, SlidersHorizontal, Info } from 'lucide-react';
 import type { Settings, WorkspaceSnapshot } from '../../shared/types';
+import { UpdatesCard } from './UpdatesCard';
 export function SettingsPage({ snapshot, save, notify }: { snapshot: WorkspaceSnapshot; save: (settings: Settings) => Promise<void>; notify: (message: string) => void }) {
   const [settings, setSettings] = useState(snapshot.settings); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); try { await save(settings); notify('Настройки сохранены.'); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }
@@ -11,6 +12,7 @@ export function SettingsPage({ snapshot, save, notify }: { snapshot: WorkspaceSn
       {error && <div className="error-box" role="alert">{error}</div>}<div><button className="button primary" disabled={busy}>{busy ? 'Сохранение…' : 'Сохранить настройки'}</button></div>
     </form>
     <section className="settings-card"><div className="settings-heading"><ShieldCheck size={21} /><div><h2>Данные на устройстве</h2><p>Без аккаунта, облачной синхронизации и API Dolphin.</p></div></div><p>Cookies и хранилища сайтов разделены по профилям. Пароли прокси и снимки session cookies защищены средствами Windows.</p><p className="data-path">{snapshot.dataPath}</p><div><button className="button secondary" onClick={() => void window.workspace.revealData().catch(e => notify(e.message))}><FolderOpen size={17} />Открыть папку данных</button></div><p className="form-hint">Для резервной копии закройте приложение и скопируйте папку целиком. Шифрованные данные могут быть недоступны под другим пользователем Windows.</p></section>
+    <UpdatesCard state={snapshot.update} notify={notify} />
     <section className="settings-card"><div className="settings-heading"><Info size={21} /><div><h2>Браузер и отпечатки</h2><p>Profile Workspace {snapshot.version}</p></div></div><p>Используется встроенный Chromium. Разделение профилей изолирует cookies и данные сайтов; полноценная подмена браузерного отпечатка пока не реализована.</p><p className="form-hint">Обновления движка устанавливаются с новой версией приложения. Расширения Chrome и совместимость со всеми сайтами пока не гарантируются.</p></section>
   </div>;
 }

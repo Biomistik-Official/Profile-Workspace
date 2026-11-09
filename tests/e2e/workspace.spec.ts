@@ -36,6 +36,9 @@ test('creates, edits, filters and selects real persisted profiles through the in
   await expect(page.getByRole('button', { name: 'Открыть профиль Рабочий обновлён' })).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть панель профиля' }).click();
   await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Обновления приложения' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Проверить обновления' })).toBeDisabled();
+  await expect(page.evaluate(() => window.workspace.closeToUpdate())).rejects.toThrow('Обновление ещё не загружено');
   await page.getByLabel('Параллельных запусков').fill('5');
   await page.getByRole('button', { name: 'Сохранить настройки' }).click();
   await expect(page.getByText('Настройки сохранены.')).toBeVisible();

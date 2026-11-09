@@ -1,7 +1,7 @@
 {
   "name": "profile-workspace",
   "productName": "Profile Workspace",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Local browser profiles, cookies and proxies without subscriptions",
   "author": "Biomistik",
@@ -13,10 +13,12 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "pack": "npm run build && electron-builder --win --dir",
-    "dist": "npm run build && electron-builder --win portable"
+    "dist": "npm run build && electron-builder --win nsis --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable --publish never"
   },
   "dependencies": {
     "@tanstack/react-virtual": "3.14.26",
+    "electron-updater": "6.8.11",
     "lucide-react": "1.70.0",
     "proxy-chain": "2.7.1",
     "react": "19.3.1",
@@ -50,12 +52,27 @@
       "package.json"
     ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "assets/icon.ico",
       "signExecutable": false
     },
     "portable": {
       "artifactName": "Profile-Workspace-${version}.exe"
-    }
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Profile-Workspace-Setup-${version}.exe"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Biomistik-Official",
+        "repo": "Profile-Workspace"
+      }
+    ]
   }
 }

@@ -9,6 +9,8 @@ import type { CookieFormat, PortableCookie, ProfileDraft, ProxyCheck, ProxyDraft
 import { ProfileBrowser } from './browser';
 import { portableCookie, replaceOrMergeCookies } from './cookie-service';
 import { startSocksBridge, type SocksBridge } from './socks-bridge';
+import { autoUpdater } from 'electron-updater';
+import { UpdateController } from './updates';
 
 app.setName('Profile Workspace');
 if (process.env.PROFILE_WORKSPACE_DATA_DIR) app.setPath('userData', process.env.PROFILE_WORKSPACE_DATA_DIR);
@@ -17,6 +19,7 @@ const renderer = join(__dirname, '../../dist/index.html');
 let manager: BrowserWindow;
 let store: WorkspaceStore;
 let quitting = false;
+let updates: UpdateController | undefined;
 const browsers = new Map<string, ProfileBrowser>();
 const runtime: Record<string, RuntimeState> = {};
 const proxyChecks: Record<string, ProxyCheck> = {};
@@ -34,7 +37,7 @@ function snapshot(): WorkspaceSnapshot {
   const state = store.snapshot();
   const states = { ...runtime };
   for (const id of queue.pendingIds()) states[id] = { status: 'queued' };
-  return { ...state, runtime: states, proxyChecks: { ...proxyChecks }, queue: queue.state(), dataPath: dataRoot, version: app.getVersion() };
+  return { ...state, runtime: states, proxyChecks: { ...proxyChecks }, queue: queue.state(), dataPath: dataRoot, version: app.getVersion(), update: updates?.snapshot() };
 }
 function publish(): void { if (store && manager && !manager.isDestroyed()) manager.webContents.send('workspace:changed', snapshot()); }
 function ids(input: unknown): string[] {
@@ -193,6 +196,12 @@ function handle(method: string, fn: (...args: any[]) => unknown): void {
 }
 function registerApi(): void {
   handle('snapshot', snapshot);
+  handle('checkUpdates', () => updates?.check());
+  handle('closeToUpdate', () => {
+    if (updates?.snapshot().status !== 'ready') throw new Error('Обновление ещё не загружено.');
+    // Normal quit saves all sessions first; updater installs on the actual quit event.
+    app.quit();
+  });
   handle('saveProfile', async (input: ProfileDraft) => {
     if (input.id) await locked(input.id, async () => { const ses = await readySession(input.id!); await store.saveProfile(input); await saveSessionCookies(input.id!, ses); }); else await store.saveProfile(input);
   });
@@ -305,6 +314,8 @@ else {
     store = await WorkspaceStore.open(join(dataRoot, 'workspace.json'), { seal: encrypt, open: decrypt });
     if (quitting) { app.quit(); return; }
     queue.configure(store.snapshot().settings);
+    autoUpdater.logger = null;
+    updates = new UpdateController(autoUpdater, app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_FILE && !process.env.PROFILE_WORKSPACE_DATA_DIR, publish);
     Menu.setApplicationMenu(null);
     registerApi();
     manager = new BrowserWindow({ title: 'Profile Workspace', width: 1440, height: 940, minWidth: 900, minHeight: 640, backgroundColor: '#121619', autoHideMenuBar: true,
@@ -314,6 +325,7 @@ else {
     manager.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     manager.on('close', event => { if (!quitting) { event.preventDefault(); app.quit(); } });
     await manager.loadFile(renderer);
+    updates.start();
   }).catch(e => { if (quitting) { app.exit(0); return; } dialog.showErrorBox('Не удалось запустить Profile Workspace', (e as Error).message); app.exit(1); });
   app.on('before-quit', event => {
     if (quitting) return;

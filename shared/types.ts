@@ -19,12 +19,13 @@ export interface ProxyInfo {
 }
 export interface Settings { maxConcurrent: number; launchDelayMs: number; defaultUrl: string }
 export interface Site { id: string; name: string; url: string }
+export interface UpdateState { status: 'disabled' | 'idle' | 'checking' | 'downloading' | 'ready' | 'error'; version?: string; percent?: number }
 export interface RuntimeState { status: ProfileStatus; error?: string }
 export interface ProxyCheck { status: 'checking' | 'ok' | 'error'; ip?: string; error?: string; checkedAt?: string }
 export interface WorkspaceSnapshot {
   profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings; sites: Site[];
   runtime: Record<string, RuntimeState>; proxyChecks: Record<string, ProxyCheck>;
-  queue: { pending: number; active: number }; dataPath?: string; version?: string;
+  queue: { pending: number; active: number }; dataPath?: string; version?: string; update?: UpdateState;
 }
 export interface PortableCookie {
   domain: string; name: string; value: string; path: string; secure: boolean;
@@ -53,6 +54,8 @@ export interface WorkspaceApi {
   exportCookies(ids: string[], format: CookieFormat): Promise<boolean>;
   clearCookies(id: string): Promise<void>;
   revealData(): Promise<void>;
+  checkUpdates(): Promise<void>;
+  closeToUpdate(): Promise<void>;
   onChange(listener: (snapshot: WorkspaceSnapshot) => void): () => void;
 }
 export interface BrowserTab { id: number; title: string; url: string; loading: boolean }

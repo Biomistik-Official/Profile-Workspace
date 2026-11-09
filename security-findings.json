@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-09-oauth-tab-lifecycle-001",
+  "scan_id": "scan-2026-11-09-auto-updates-001",
   "scan_date": "2026-11-09",
   "scan_type": "working",
-  "commit_range": "28bc604..working-tree",
+  "commit_range": "1026680..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -22,19 +22,22 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 10
+    "files_analyzed": 17
   },
   "verification": {
-    "build": "passed",
-    "unit_tests": "20 passed",
-    "electron_ui_integration_tests": "19 passed",
-    "source_review": "Author reviewed native tab lifecycle and popup creation. Destroyed contents are pruned before state reads; tab maps clear before synchronous native close events. OAuth children adopt Electron-supplied WebContents with current session, sandbox, context isolation, webSecurity, no Node/preload and no non-proxied WebRTC UDP. HTTP(S)/about:blank popup allowlist and navigation restrictions remain enforced. Local regression verifies opener, sessionStorage, cookies, postMessage, window.close, missing privileged globals and file-popup rejection. No SQL, shell or HTML injection sinks added.",
-    "publication_inventory": "Source, synthetic tests, documentation, threat model and package version only; no user profiles, cookies, OAuth codes, credentials or build outputs in Git.",
-    "instructions_review": "Documentation and threat-model changes contain no exfiltration or prompt-injection instructions.",
-    "packaged_regressions": "2 OAuth and sites/native-tab-destruction tests passed against packaged 0.1.4 payload"
+    "build": "passed; per-user NSIS installer and manifest generated",
+    "unit_tests": "24 passed",
+    "electron_ui_integration_tests": "20 passed",
+    "packaged_regressions": "OAuth, sites and staged-update quit regression passed against packaged payload",
+    "installer": "Silent per-user install exit 0; installed 0.1.5 launched with 11 existing profiles and 6 proxies; desktop/start-menu shortcuts verified",
+    "manifest": "latest.yml version, filename, file size and SHA512 match installer",
+    "dependency_audit": "0 known production vulnerabilities",
+    "source_review": "Author and separate reviewer inspected fixed GitHub provider, pinned updater, sender-checked manager IPC, nonfatal error handling, stable-only downloads, disabled web installers and installation on actual quit. Regression proves failed session encryption prevents installer invocation until successful retry. No new shell/SQL/HTML injection sinks, credentials or renderer-supplied feed paths.",
+    "publication_inventory": "Source, synthetic tests, setup/design docs, threat model and lockfile only; no user profiles, cookies, proxy credentials or account data.",
+    "instructions_review": "Documentation and skill-plan text inspected for malicious instructions; none found."
   },
   "limitations": [
-    "Manual source review and automated tests do not prove absence of vulnerabilities.",
-    "Live Twitch/Supercell account linking remains unverified; the tested OAuth fixture uses local origins and synthetic state/cookies."
+    "Future live production upgrade to a newer version has not yet occurred; installation, metadata and safe-quit hook are tested.",
+    "No Authenticode certificate is configured. Release feed ownership and HTTPS/SHA512 distribution are trusted."
   ]
 }
