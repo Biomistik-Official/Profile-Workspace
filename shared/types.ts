@@ -18,10 +18,11 @@ export interface ProxyInfo {
   username: string; hasPassword: boolean;
 }
 export interface Settings { maxConcurrent: number; launchDelayMs: number; defaultUrl: string }
+export interface Site { id: string; name: string; url: string }
 export interface RuntimeState { status: ProfileStatus; error?: string }
 export interface ProxyCheck { status: 'checking' | 'ok' | 'error'; ip?: string; error?: string; checkedAt?: string }
 export interface WorkspaceSnapshot {
-  profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings;
+  profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings; sites: Site[];
   runtime: Record<string, RuntimeState>; proxyChecks: Record<string, ProxyCheck>;
   queue: { pending: number; active: number }; dataPath?: string; version?: string;
 }
@@ -57,6 +58,11 @@ export interface WorkspaceApi {
 export interface BrowserTab { id: number; title: string; url: string; loading: boolean }
 export interface BrowserState { profileName: string; tabs: BrowserTab[]; activeId: number; canGoBack: boolean; canGoForward: boolean }
 export interface BrowserApi {
+  sites(): Promise<Site[]>;
+  saveSite(input: { name: string; url: string }): Promise<void>;
+  deleteSite(id: string): Promise<void>;
+  openSite(url: string): Promise<void>;
+  setSitesOpen(open: boolean): Promise<void>;
   state(): Promise<BrowserState>; navigate(url: string): Promise<void>;
   action(action: 'back' | 'forward' | 'reload' | 'newTab'): Promise<void>;
   selectTab(id: number): Promise<void>; closeTab(id: number): Promise<void>;

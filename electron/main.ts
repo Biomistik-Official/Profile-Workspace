@@ -272,9 +272,14 @@ function registerApi(): void {
     const ses = await readySession(id); await ses.clearStorageData({ storages: ['cookies'] }); await ses.cookies.flushStore(); await rm(join(dataRoot, 'session-cookies', `${id}.enc`), { force: true });
   }));
   handle('revealData', () => shell.openPath(dataRoot));
-  for (const method of ['state', 'navigate', 'action', 'selectTab', 'closeTab']) ipcMain.handle(`browser:${method}`, async (event, input) => {
+  for (const method of ['state', 'navigate', 'action', 'selectTab', 'closeTab', 'sites', 'saveSite', 'deleteSite', 'openSite', 'setSitesOpen']) ipcMain.handle(`browser:${method}`, async (event, input) => {
     const browser = [...browsers.values()].find(b => b.window.webContents === event.sender);
     if (!browser || event.senderFrame !== browser.window.webContents.mainFrame) throw new Error('Доступ запрещён.');
+    if (method === 'sites') return store.snapshot().sites;
+    if (method === 'saveSite') return store.saveSite(input);
+    if (method === 'deleteSite') return store.deleteSite(input);
+    if (method === 'openSite') return browser.addTab(input);
+    if (method === 'setSitesOpen') { if (typeof input !== 'boolean') throw new Error('Неверное состояние панели.'); return browser.setSitesOpen(input); }
     if (method === 'state') return browser.state();
     if (method === 'navigate') { if (typeof input !== 'string') throw new Error('Неверный адрес.'); return browser.navigate(input); }
     if (method === 'action') return browser.action(input);

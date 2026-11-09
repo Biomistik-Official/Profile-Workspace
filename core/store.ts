@@ -1,11 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { Profile, ProfileDraft, ProxyDraft, ProxyInfo, Settings, WorkspaceSnapshot } from '../shared/types';
+import type { Profile, ProfileDraft, ProxyDraft, ProxyInfo, Settings, Site, WorkspaceSnapshot } from '../shared/types';
 import { hostName, integer, tags, text, webUrl } from './validation';
 interface SecretCodec { seal(value: string): Promise<string>; open(value: string): Promise<string> }
 interface StoredProxy extends ProxyInfo { secret: string }
-interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings }
+interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings; sites?: Site[] }
+const defaultSites: Site[] = [
+  { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv/' },
+  { id: 'tiktok', name: 'TikTok', url: 'https://www.tiktok.com/' },
+  { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/' },
+  { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/' },
+  { id: 'supercell', name: 'Supercell Creators', url: 'https://creators.supercell.com/' },
+];
 const defaults: Settings = { maxConcurrent: 3, launchDelayMs: 600, defaultUrl: 'https://www.google.com/' };
 export class WorkspaceStore {
   private tail: Promise<unknown> = Promise.resolve();
@@ -20,10 +27,11 @@ export class WorkspaceStore {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw new Error('Не удалось открыть workspace.json. Данные сохранены; проверьте файл или резервную копию.');
       data = { version: 1, profiles: [], proxies: [], settings: { ...defaults } };
     }
+    data.sites ??= structuredClone(defaultSites);
     return new WorkspaceStore(file, codec, data);
   }
   snapshot(): WorkspaceSnapshot {
-    return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
+    return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, sites: this.data.sites!, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
   }
   profile(id: string): Profile { const p = this.data.profiles.find(p => p.id === id); if (!p) throw new Error('Профиль не найден.'); return structuredClone(p); }
   proxy(id: string): ProxyInfo { const p = this.snapshot().proxies.find(p => p.id === id); if (!p) throw new Error('Прокси не найден.'); return p; }
@@ -61,6 +69,13 @@ export class WorkspaceStore {
       return p;
     });
   }
+  saveSite(input: { name: string; url: string }): Promise<Site> {
+    return this.mutate(data => {
+      const site = { id: randomUUID(), name: text(input.name, 'Название', 120), url: webUrl(input.url) };
+      data.sites!.push(site); return site;
+    });
+  }
+  deleteSite(id: string): Promise<void> { return this.mutate(data => { data.sites = data.sites!.filter(s => s.id !== id); }); }
   markOpened(id: string): Promise<void> { return this.mutate(data => { const p = data.profiles.find(p => p.id === id); if (!p) throw new Error('Профиль не найден.'); p.lastOpenedAt = new Date().toISOString(); }); }
   deleteProfiles(ids: string[]): Promise<void> { return this.mutate(data => { data.profiles = data.profiles.filter(p => !ids.includes(p.id)); }); }
   bulkUpdate(ids: string[], input: { tags?: string[]; proxyId?: string | null }): Promise<void> {

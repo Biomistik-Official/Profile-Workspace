@@ -17,6 +17,7 @@ The user approved the graphite/teal concept. UI/UX Pro Max's Minimalism & Swiss 
 - `electron/main.ts`: lifecycle, trusted IPC, profile/session ownership, Windows safeStorage, native dialogs, cookie import/export and proxy probes.
 - `electron/socks-bridge.ts`: per-session loopback HTTP bridge through authenticated SOCKS5, using pinned CommonJS proxy-chain 2.7.1. Random local credentials restrict bridge access; remote hostname resolution uses socks5h. Main closes bridges on check completion, failed/cancelled launches, browser close, reconfiguration and shutdown.
 - `electron/browser.ts`: profile browser windows and unprivileged WebContentsView tabs. Each remote view sets `disable_non_proxied_udp`.
+- `src/components/SitesPanel.tsx`: left slide-out site shortcuts inside each profile browser, toggled by the top-left Sites button. Links open new tabs in the current profile session; native views move right by 300 px while the panel is open. Custom links are shared across profiles and saved atomically in `workspace.json`; old workspaces receive Twitch, TikTok, YouTube, Instagram and Supercell Creators defaults. Browser-only IPC validates the shell sender/frame and HTTP(S) URLs.
 - `electron/preload.ts`: allowlisted renderer bridge; main enforces manager-only versus browser-only calls by sender and frame identity.
 - `electron/cookie-service.ts`: cookie conversion, replace/merge with rollback on browser rejection.
 - `core/store.ts`: serialized mutations and atomic JSON replacement; secrets enter through an injected encryption codec. Public snapshots omit encrypted password payloads.
@@ -40,6 +41,8 @@ Each profile owns its Chromium storage and proxy configuration. Persistent cooki
 Authenticated SOCKS5 is supported starting with local version 0.1.1; passwords remain protected by Windows safeStorage, with SOCKS5 credentials limited to 255 UTF-8 bytes per field. See [NordVPN setup](docs/nordvpn-proxy.md). Live NordVPN account connectivity is unverified. Partitioned-cookie exchange, full fingerprint spoofing, extensions, cloud sync and automatic engine updates are not implemented. Site camera/microphone/location/notification requests are currently denied. Proxy preflight and IP checks use ipify; failed checks never substitute direct access. See README for user-facing limitations, backup and import/export semantics.
 
 ## Commands and constraints
+
+Version 0.1.3 adds the browser Sites drawer. Build, 18 unit tests and 18 real Electron integration/UI tests passed. The sites test covers new tabs, native-view bounds, persistence across shell reload, deletion and HTTP(S)-only navigation; store tests cover legacy data migration and preserving an empty site list.
 
 Version 0.1.2 guards second-instance handling against shutdown and destroyed manager windows. `tests/e2e/lifecycle.spec.ts` reproduces the stale-window exception. An already-running older binary must be closed before launching the update; fixes in a downloaded binary cannot change its existing single-instance handler.
 

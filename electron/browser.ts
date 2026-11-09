@@ -7,6 +7,7 @@ export class ProfileBrowser {
   readonly window: BrowserWindow;
   private tabs = new Map<number, WebContentsView>();
   private activeId = 0;
+  private sitesOpen = false;
   private shutting = false;
   private closing?: Promise<void>;
   constructor(readonly profile: Profile, readonly session: Session, private renderer: string, private beforeClose: () => Promise<void>, private afterClose: () => void) {
@@ -31,10 +32,11 @@ export class ProfileBrowser {
       canGoBack: active?.navigationHistory.canGoBack() ?? false, canGoForward: active?.navigationHistory.canGoForward() ?? false };
   }
   private publish(): void { if (!this.window.isDestroyed()) this.window.webContents.send('browser:changed', this.state()); }
+  setSitesOpen(open: boolean): void { this.sitesOpen = open; this.layout(); }
   private layout(): void {
     if (this.window.isDestroyed()) return;
     const [width, height] = this.window.getContentSize();
-    for (const [id, view] of this.tabs) { view.setVisible(id === this.activeId); view.setBounds({ x: 0, y: 98, width, height: Math.max(0, height - 98) }); }
+    for (const [id, view] of this.tabs) { view.setVisible(id === this.activeId); view.setBounds({ x: this.sitesOpen ? 300 : 0, y: 98, width: Math.max(0, width - (this.sitesOpen ? 300 : 0)), height: Math.max(0, height - 98) }); }
   }
   async addTab(url = 'https://www.google.com/'): Promise<void> {
     const address = webUrl(url);

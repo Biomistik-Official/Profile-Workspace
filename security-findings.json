@@ -1,43 +1,40 @@
 {
-  "scan_id": "scan-2026-11-08-lifecycle-publication-003",
-  "scan_date": "2026-11-08",
+  "scan_id": "scan-2026-11-09-browser-sites-001",
+  "scan_date": "2026-11-09",
   "scan_type": "working",
-  "commit_range": "1ec768c..working-tree",
+  "commit_range": "1b23820..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
   "summary": {
+    "total_findings": 0,
     "by_severity": {
-      "LOW": 0,
       "CRITICAL": 0,
       "HIGH": 0,
-      "MEDIUM": 0
+      "MEDIUM": 0,
+      "LOW": 0
     },
-    "total_findings": 0,
-    "files_analyzed": 9,
     "by_stride": {
-      "DoS": 0,
-      "ElevationOfPrivilege": 0,
-      "Repudiation": 0,
       "Spoofing": 0,
       "Tampering": 0,
-      "InfoDisclosure": 0
-    }
+      "Repudiation": 0,
+      "InfoDisclosure": 0,
+      "DoS": 0,
+      "ElevationOfPrivilege": 0
+    },
+    "files_analyzed": 15
   },
   "verification": {
     "build": "passed",
-    "independent_review": "Author reviewed the complete small lifecycle diff; no consequential remaining findings.",
-    "packaged_proxy_tests": "4 packaged lifecycle/proxy tests passed",
-    "dependency_audit": "0 known vulnerabilities",
-    "electron_ui_integration_tests": "17 passed",
-    "publication_inventory": "Explicit source/docs/test/lockfile changes only. No user profiles, cookies, account credentials, vendor binaries, dependencies or build caches staged. Synthetic test credentials reviewed.",
-    "unit_tests": "16 passed",
-    "source_review": "Reviewed second-instance lifetime guard, regression, version bump and docs. Fix prevents a reproduced use-after-destroy exception; no changes to authentication, secret storage, IPC, proxy routing, SQL, shell execution or HTML sinks.",
-    "instructions_review": "Reviewed updated release/setup documentation; no exfiltration instructions or private data."
+    "unit_tests": "18 passed",
+    "electron_ui_integration_tests": "18 passed",
+    "source_review": "Author reviewed the complete sites drawer diff, including browser-only IPC sender/frame checks, validated HTTP(S) navigation without embedded credentials, atomic persistence, legacy defaults, native-view bounds and React text rendering. No SQL, command execution, HTML injection sinks or new secrets introduced.",
+    "publication_inventory": "Source, tests, documentation and package version only. Personal profiles, cookies, credentials, dependencies and build outputs excluded from Git.",
+    "instructions_review": "Release and setup prose checked for prompt injection or exfiltration instructions; none found.",
+    "packaged_sites_test": "Passed against release/win-unpacked/Profile Workspace.exe"
   },
   "limitations": [
-    "Manual source review and tests do not prove absence of vulnerabilities.",
-    "Actual NordVPN account access, simultaneous distinct upstream accounts and separate clean Windows installations remain unverified.",
-    "No external penetration testing or scanning was performed."
+    "Manual review and tests do not prove absence of vulnerabilities.",
+    "Third-party site authentication and media playback were not verified; navigation is tested against a local HTTP fixture."
   ]
 }

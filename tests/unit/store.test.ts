@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,6 +8,28 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('loads older workspaces with default sites and preserves an intentionally empty site list', async () => {
+    const { file, store } = await setup();
+    await store.saveProfile({ name: 'Existing profile' });
+    const old = JSON.parse(await readFile(file, 'utf8')); delete old.sites;
+    await writeFile(file, JSON.stringify(old));
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.snapshot().profiles[0].name).toBe('Existing profile');
+    expect(loaded.snapshot().sites).toHaveLength(5);
+    for (const site of loaded.snapshot().sites) await loaded.deleteSite(site.id);
+    expect((await WorkspaceStore.open(file, secrets)).snapshot().sites).toEqual([]);
+  });
+  it('adds, persists and removes custom sites without changing profiles or settings', async () => {
+    const { file, store } = await setup();
+    expect(store.snapshot().sites.map(s => s.name)).toEqual(['Twitch', 'TikTok', 'YouTube', 'Instagram', 'Supercell Creators']);
+    const site = await store.saveSite({ name: 'Мой сайт', url: 'https://example.com' });
+    await store.saveSettings({ maxConcurrent: 2, launchDelayMs: 0, defaultUrl: 'https://example.org/' });
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.snapshot().sites.at(-1)).toEqual({ ...site, url: 'https://example.com/' });
+    await expect(loaded.saveSite({ name: 'Bad', url: 'javascript:alert(1)' })).rejects.toThrow();
+    await loaded.deleteSite(site.id);
+    expect((await WorkspaceStore.open(file, secrets)).snapshot().sites).toHaveLength(5);
+  });
   it('persists authenticated SOCKS5 credentials encrypted and preserves the password on edit', async () => {
     const { file, store } = await setup();
     const draft = { name: 'Nord', protocol: 'socks5' as const, host: 'nl.socks.nordhold.net', port: 1080, username: 'service-user' };

@@ -9,6 +9,6 @@ contextBridge.exposeInMainWorld('workspace', {
   onChange: subscribe('workspace:changed'),
 });
 contextBridge.exposeInMainWorld('browser', {
-  ...Object.fromEntries(['state', 'navigate', 'action', 'selectTab', 'closeTab'].map(method => [method, (...args: unknown[]) => ipcRenderer.invoke(`browser:${method}`, ...args)])),
+  ...Object.fromEntries(['state', 'navigate', 'action', 'selectTab', 'closeTab', 'sites', 'saveSite', 'deleteSite', 'openSite', 'setSitesOpen'].map(method => [method, (...args: unknown[]) => ipcRenderer.invoke(`browser:${method}`, ...args)])),
   onChange: subscribe('browser:changed'),
 });
