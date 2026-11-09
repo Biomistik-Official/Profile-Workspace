@@ -1,7 +1,7 @@
 {
   "name": "profile-workspace",
   "productName": "Profile Workspace",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Local browser profiles, cookies and proxies without subscriptions",
   "author": "Biomistik",

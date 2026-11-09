@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-09-browser-sites-001",
+  "scan_id": "scan-2026-11-09-oauth-tab-lifecycle-001",
   "scan_date": "2026-11-09",
   "scan_type": "working",
-  "commit_range": "1b23820..working-tree",
+  "commit_range": "28bc604..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -22,19 +22,19 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 15
+    "files_analyzed": 10
   },
   "verification": {
     "build": "passed",
-    "unit_tests": "18 passed",
-    "electron_ui_integration_tests": "18 passed",
-    "source_review": "Author reviewed the complete sites drawer diff, including browser-only IPC sender/frame checks, validated HTTP(S) navigation without embedded credentials, atomic persistence, legacy defaults, native-view bounds and React text rendering. No SQL, command execution, HTML injection sinks or new secrets introduced.",
-    "publication_inventory": "Source, tests, documentation and package version only. Personal profiles, cookies, credentials, dependencies and build outputs excluded from Git.",
-    "instructions_review": "Release and setup prose checked for prompt injection or exfiltration instructions; none found.",
-    "packaged_sites_test": "Passed against release/win-unpacked/Profile Workspace.exe"
+    "unit_tests": "20 passed",
+    "electron_ui_integration_tests": "19 passed",
+    "source_review": "Author reviewed native tab lifecycle and popup creation. Destroyed contents are pruned before state reads; tab maps clear before synchronous native close events. OAuth children adopt Electron-supplied WebContents with current session, sandbox, context isolation, webSecurity, no Node/preload and no non-proxied WebRTC UDP. HTTP(S)/about:blank popup allowlist and navigation restrictions remain enforced. Local regression verifies opener, sessionStorage, cookies, postMessage, window.close, missing privileged globals and file-popup rejection. No SQL, shell or HTML injection sinks added.",
+    "publication_inventory": "Source, synthetic tests, documentation, threat model and package version only; no user profiles, cookies, OAuth codes, credentials or build outputs in Git.",
+    "instructions_review": "Documentation and threat-model changes contain no exfiltration or prompt-injection instructions.",
+    "packaged_regressions": "2 OAuth and sites/native-tab-destruction tests passed against packaged 0.1.4 payload"
   },
   "limitations": [
-    "Manual review and tests do not prove absence of vulnerabilities.",
-    "Third-party site authentication and media playback were not verified; navigation is tested against a local HTTP fixture."
+    "Manual source review and automated tests do not prove absence of vulnerabilities.",
+    "Live Twitch/Supercell account linking remains unverified; the tested OAuth fixture uses local origins and synthetic state/cookies."
   ]
 }

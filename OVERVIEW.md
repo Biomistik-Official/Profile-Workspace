@@ -42,6 +42,10 @@ Authenticated SOCKS5 is supported starting with local version 0.1.1; passwords r
 
 ## Commands and constraints
 
+Version 0.1.4 fixes `getTitle` errors from destroyed tab contents. Browser shutdown clears the tab map before native close events; state/layout prune destroyed views and reconcile the active tab. New unit regressions reproduce synchronous close events and externally destroyed tabs; the sites integration test also destroys an actual native tab before stopping the profile.
+
+OAuth popups now use Electron's `createWindow` callback and adopt its supplied native WebContents into profile tabs. This preserves `window.opener`, sessionStorage, postMessage and script-initiated close across cross-origin redirects. Popup contents keep the current profile session, sandboxing and WebRTC policy without Node/preload privileges; only HTTP(S) and initial `about:blank` popups are accepted. `tests/e2e/oauth.spec.ts` covers the full local redirect/message/close flow, shared cookies, isolation and file-popup rejection. Live Twitch/Supercell account linking still requires user verification.
+
 Version 0.1.3 adds the browser Sites drawer. Build, 18 unit tests and 18 real Electron integration/UI tests passed. The sites test covers new tabs, native-view bounds, persistence across shell reload, deletion and HTTP(S)-only navigation; store tests cover legacy data migration and preserving an empty site list.
 
 Version 0.1.2 guards second-instance handling against shutdown and destroyed manager windows. `tests/e2e/lifecycle.spec.ts` reproduces the stale-window exception. An already-running older binary must be closed before launching the update; fixes in a downloaded binary cannot change its existing single-instance handler.

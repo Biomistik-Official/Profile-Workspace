@@ -43,5 +43,15 @@ test('browser left drawer persists sites and opens isolated tabs without coverin
     await expect(browser.evaluate(() => window.browser.openSite('file:///C:/Windows'))).rejects.toThrow();
     await panel.getByRole('button', { name: 'Удалить сайт Мой сайт' }).click();
     await expect(panel.getByRole('button', { name: 'Открыть Мой сайт', exact: true })).toHaveCount(0);
+    await app.evaluate(({ dialog, webContents }, url) => {
+      (globalThis as any).__sitesErrors = [];
+      dialog.showErrorBox = (title, message) => { (globalThis as any).__sitesErrors.push({ title, message }); };
+      webContents.getAllWebContents().find(w => w.getURL() === url + 'custom')!.close();
+    }, url);
+    await expect.poll(() => browser.evaluate(async () => (await window.browser.state()).tabs.length)).toBe(1);
+    await manager.evaluate(async () => {
+      const s = await window.workspace.snapshot(); await window.workspace.stop([s.profiles[0].id]);
+    });
+    expect(await app.evaluate(() => (globalThis as any).__sitesErrors)).toEqual([]);
   } finally { await app.close(); await new Promise<void>(r => server.close(() => r())); await rm(data, { recursive: true, force: true }); }
 });
