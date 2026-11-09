@@ -31,7 +31,8 @@
     "source_review": "Author reviewed the complete scoped diff. Language canonicalization admits only ru/en families; foreign legacy languages migrate atomically to en-US while preserving other fingerprint fields. UI uses a constrained select; main-process validation remains authoritative. No new permissions, arbitrary scripts, shell, SQL, templates or secrets.",
     "publication_inventory": "Source, synthetic tests, documentation and version only; no personal profile data or credentials.",
     "instructions_review": "No malicious or exfiltration instructions introduced.",
-    "packaged_regressions": "Both parameter and UI tests passed against packaged 0.1.7"
+    "packaged_regressions": "Both parameter and UI tests passed against packaged 0.1.7",
+    "production_upgrade": "Installed 0.1.6 downloaded and applied 0.1.7 through the updater. Every current profile has the expected Russian/English language; profile metadata and all fingerprint fields except language matched the pre-update hash."
   },
   "limitations": [
     "This change restricts the configured profile language; previously documented basic-emulation limitations remain unchanged."
