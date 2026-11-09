@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-09-auto-updates-001",
+  "scan_id": "scan-2026-11-09-profile-parameters-001",
   "scan_date": "2026-11-09",
   "scan_type": "working",
-  "commit_range": "1026680..working-tree",
+  "commit_range": "bce5025..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -22,23 +22,21 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 17
+    "files_analyzed": 24
   },
   "verification": {
-    "build": "passed; per-user NSIS installer and manifest generated",
-    "unit_tests": "24 passed",
-    "electron_ui_integration_tests": "20 passed",
-    "packaged_regressions": "OAuth, sites and staged-update quit regression passed against packaged payload",
-    "installer": "Silent per-user install exit 0; installed 0.1.5 launched with existing profiles/proxies; desktop/start-menu shortcuts verified",
-    "manifest": "latest.yml version, filename, file size and SHA512 match installer",
-    "dependency_audit": "0 known production vulnerabilities",
-    "source_review": "Author and separate reviewer inspected fixed GitHub provider, pinned updater, sender-checked manager IPC, nonfatal error handling, stable-only downloads, disabled web installers and installation on actual quit. Regression proves failed session encryption prevents installer invocation until successful retry. No new shell/SQL/HTML injection sinks, credentials or renderer-supplied feed paths.",
-    "publication_inventory": "Source, synthetic tests, setup/design docs, threat model and lockfile only; no user profiles, cookies, proxy credentials or account data.",
-    "instructions_review": "Documentation and skill-plan text inspected for malicious instructions; none found.",
-    "production_update_feed": "Installed 0.1.5 successfully checked published GitHub release metadata and returned idle/no newer update"
+    "build": "passed; NSIS manifest version, installer size and SHA512 verified",
+    "unit_tests": "27 passed",
+    "electron_ui_integration_tests": "22 passed",
+    "source_review": "Author and fresh reviewer found no consequential issues. Validated settings enter fixed native CDP commands; no profile-provided JavaScript, shell or SQL. UA control characters rejected. Client Hints read from constant trusted-shell script. Per-profile sessions, proxy fail-closed behavior, sandbox and no-Node remote contents retained. Atomic migration persists defaults immediately; copies regenerate settings. Native popup/initial-blank and worker limitations documented.",
+    "publication_inventory": "Source, synthetic tests and documentation only. No personal browser data, OAuth codes, credentials or third-party proprietary browser code.",
+    "instructions_review": "Changed UI/docs/plans inspected; no exfiltration or prompt-injection instructions.",
+    "packaged_regressions": "4 profile-parameter/UI/OAuth/safe-update-quit tests passed against packaged 0.1.6 payload",
+    "dependency_audit": "0 known production vulnerabilities"
   },
   "limitations": [
-    "Future live production upgrade to a newer version has not yet occurred; installation, metadata and safe-quit hook are tested.",
-    "No Authenticode certificate is configured. Release feed ownership and HTTPS/SHA512 distribution are trusted."
+    "Basic Chromium emulation only: Canvas/WebGL/Audio/fonts/workers and other native hardware surfaces remain unchanged.",
+    "Adopted OAuth children initialize asynchronously; first-script local/cross-site probes do not prove universal timing guarantees.",
+    "Custom User-Agent can disagree with native Client Hints. Generated setting combinations are finite; no uniqueness or site-unblocking guarantee."
   ]
 }

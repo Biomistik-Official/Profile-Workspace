@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, Menu, WebContentsView, type Session, type WebPre
 import { join } from 'node:path';
 import type { BrowserState, Profile } from '../shared/types';
 import { webUrl } from '../core/validation';
+import { applyFingerprint } from './fingerprint';
 
 export class ProfileBrowser {
   readonly window: BrowserWindow;
@@ -10,6 +11,8 @@ export class ProfileBrowser {
   private sitesOpen = false;
   private shutting = false;
   private closing?: Promise<void>;
+  private fingerprintReady = new Map<number, Promise<void>>();
+  private nativeMetadata?: Record<string, unknown>;
   constructor(readonly profile: Profile, readonly session: Session, private renderer: string, private beforeClose: () => Promise<void>, private afterClose: () => void) {
     this.window = new BrowserWindow({ title: profile.name, width: 1280, height: 850, minWidth: 720, minHeight: 500, backgroundColor: '#151B20', autoHideMenuBar: true,
       icon: join(__dirname, '../../assets/icon.png'),
@@ -23,6 +26,15 @@ export class ProfileBrowser {
   }
   async open(): Promise<void> {
     await this.window.loadFile(this.renderer, { query: { mode: 'browser' } });
+    if (this.profile.fingerprint) {
+      // Read native Client Hints from our trusted local shell, never a site.
+      this.nativeMetadata = await this.window.webContents.executeJavaScript(`(async () => {
+        if (!navigator.userAgentData) return undefined;
+        const d = await navigator.userAgentData.getHighEntropyValues(['architecture','bitness','model','platformVersion','fullVersionList','wow64']);
+        return { brands: d.brands.filter(b => b.brand !== 'Electron'), fullVersionList: d.fullVersionList?.filter(b => b.brand !== 'Electron'),
+          platform: d.platform, platformVersion: d.platformVersion, architecture: d.architecture, model: d.model, mobile: d.mobile, bitness: d.bitness, wow64: d.wow64 };
+      })()`);
+    }
     await this.addTab(this.profile.startUrl);
   }
   state(): BrowserState {
@@ -54,6 +66,7 @@ export class ProfileBrowser {
     const address = webUrl(url);
     if (this.closing || this.window.isDestroyed()) return;
     const view = this.createTab();
+    await this.fingerprintReady.get(view.webContents.id);
     try { await view.webContents.loadURL(address); } catch { /* Chromium displays its own network error; keep the address bar usable. */ }
     this.publish();
   }
@@ -68,6 +81,14 @@ export class ProfileBrowser {
     this.tabs.set(view.webContents.id, view); this.activeId = view.webContents.id;
     this.window.contentView.addChildView(view);
     const wc = view.webContents;
+    if (this.profile.fingerprint) {
+      const ready = (async () => {
+        // A fresh view has no renderer yet; initialize it without a network request.
+        if (!options.webContents) await wc.loadURL('about:blank');
+        await applyFingerprint(wc, this.profile.fingerprint!, this.session.getUserAgent(), this.nativeMetadata);
+      })();
+      this.fingerprintReady.set(wc.id, ready); void ready.catch(() => {});
+    }
     wc.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
     wc.setWindowOpenHandler(({ url }) => {
       if (this.closing || this.window.isDestroyed()) return { action: 'deny' };
@@ -84,7 +105,8 @@ export class ProfileBrowser {
     wc.on('page-title-updated', () => this.publish());
     wc.on('did-start-loading', () => this.publish());
     wc.on('did-stop-loading', () => this.publish());
-    wc.on('destroyed', () => { this.layout(); this.publish(); });
+    const contentsId = wc.id;
+    wc.on('destroyed', () => { this.fingerprintReady.delete(contentsId); this.layout(); this.publish(); });
     wc.on('context-menu', (_e, params) => Menu.buildFromTemplate([
       ...(params.isEditable ? [{ role: 'cut' as const }, { role: 'copy' as const }, { role: 'paste' as const }, { type: 'separator' as const }] : params.selectionText ? [{ role: 'copy' as const }] : []),
       { label: 'Назад', enabled: wc.navigationHistory.canGoBack(), click: () => wc.navigationHistory.goBack() },

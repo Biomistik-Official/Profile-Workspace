@@ -8,6 +8,20 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('persists fingerprint changes and migrates old profiles without clearing profile data', async () => {
+    const { file, store } = await setup();
+    const first = await store.saveProfile({ name: 'Fingerprint', notes: 'Keep note' });
+    const second = await store.saveProfile({ name: 'Other' });
+    expect(first.fingerprint).toBeDefined(); expect(first.fingerprint).not.toEqual(second.fingerprint);
+    const changed = { ...first.fingerprint!, timezone: 'Europe/Amsterdam', language: 'nl-NL', hardwareConcurrency: 4 };
+    await store.saveProfile({ id: first.id, name: first.name, fingerprint: changed });
+    expect((await WorkspaceStore.open(file, secrets)).profile(first.id).fingerprint).toEqual(changed);
+    const old = JSON.parse(await readFile(file, 'utf8')); delete old.profiles[0].fingerprint;
+    await writeFile(file, JSON.stringify(old));
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.profile(first.id)).toMatchObject({ notes: 'Keep note', fingerprint: { userAgent: '' } });
+    expect((await WorkspaceStore.open(file, secrets)).profile(first.id).fingerprint).toEqual(loaded.profile(first.id).fingerprint);
+  });
   it('loads older workspaces with default sites and preserves an intentionally empty site list', async () => {
     const { file, store } = await setup();
     await store.saveProfile({ name: 'Existing profile' });

@@ -1,0 +1,7 @@
+# Native Chromium profile parameters
+
+User chose a stable per-profile fingerprint with a regenerate button, and the first-stage implementation in the existing Chromium engine. Expose language, IANA timezone, screen dimensions, logical CPU count and optional custom User-Agent in the profile form. The default User-Agent follows the actual Chromium version across application updates. Settings change only while stopped. Existing profiles receive defaults; new profiles and copies generate their own settings. Regeneration does not clear cookies or site storage.
+
+Approach: use native Electron session settings and CDP Emulation overrides. Normal tabs wait for overrides before navigation; OAuth child contents receive overrides during native creation while retaining their original navigation. Profile tabs and OAuth children share settings and session. Preserve sandbox, context isolation, popup opener relationships, WebRTC policy and proxy fail-closed behavior. Test observable values in real Electron pages and an OAuth popup, not just stored configuration.
+
+Scope: Canvas, WebGL, Audio, fonts, workers and other hardware surfaces remain native; this is configurable browser emulation, not a Dolphin-equivalent engine or a guarantee of unlinkability. A distinct profile settings ID is not a website-visible unique fingerprint. Generated parameter combinations should avoid reuse among existing profiles when available. No promise that changing these parameters removes Supercell login blocks.
