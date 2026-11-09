@@ -4,7 +4,10 @@ export function FingerprintEditor({ value, change, regenerate, busy }: { value: 
   function patch(input: Partial<Fingerprint>) { change({ ...value, ...input }); }
   return <fieldset className="fingerprint-editor"><legend><FingerprintIcon size={17} />Отпечаток</legend>
     <p className="form-hint">Параметры сохраняются за профилем. Новый набор не удаляет cookies и сессии.</p>
-    <div className="form-grid"><label>Язык браузера<input value={value.language} onChange={e => patch({ language: e.target.value })} placeholder="en-GB" required maxLength={40} /></label>
+    <div className="form-grid"><label>Язык браузера<select value={value.language} onChange={e => patch({ language: e.target.value })}>
+      <option value="ru-RU">Русский</option><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option>
+      {!['ru-RU','en-US','en-GB'].includes(value.language) && <option value={value.language}>{value.language.startsWith('ru') ? 'Русский' : 'English'} ({value.language})</option>}
+    </select></label>
       <label>Часовой пояс<input value={value.timezone} onChange={e => patch({ timezone: e.target.value })} placeholder="Europe/London" required maxLength={100} list="fingerprint-timezones" /></label></div>
     <datalist id="fingerprint-timezones">{['Europe/London','Europe/Amsterdam','Europe/Berlin','Europe/Stockholm','Europe/Paris','Europe/Moscow','America/New_York','America/Los_Angeles','America/Toronto','Asia/Tokyo'].map(t => <option value={t} key={t} />)}</datalist>
     <div className="form-grid"><label>Ширина экрана<input type="number" min={640} max={7680} required value={value.screenWidth} onChange={e => patch({ screenWidth: Number(e.target.value) })} /></label>

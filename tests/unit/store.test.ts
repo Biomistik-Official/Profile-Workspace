@@ -13,7 +13,7 @@ describe('workspace persistence', () => {
     const first = await store.saveProfile({ name: 'Fingerprint', notes: 'Keep note' });
     const second = await store.saveProfile({ name: 'Other' });
     expect(first.fingerprint).toBeDefined(); expect(first.fingerprint).not.toEqual(second.fingerprint);
-    const changed = { ...first.fingerprint!, timezone: 'Europe/Amsterdam', language: 'nl-NL', hardwareConcurrency: 4 };
+    const changed = { ...first.fingerprint!, timezone: 'Europe/Amsterdam', language: 'en-GB', hardwareConcurrency: 4 };
     await store.saveProfile({ id: first.id, name: first.name, fingerprint: changed });
     expect((await WorkspaceStore.open(file, secrets)).profile(first.id).fingerprint).toEqual(changed);
     const old = JSON.parse(await readFile(file, 'utf8')); delete old.profiles[0].fingerprint;
@@ -21,6 +21,14 @@ describe('workspace persistence', () => {
     const loaded = await WorkspaceStore.open(file, secrets);
     expect(loaded.profile(first.id)).toMatchObject({ notes: 'Keep note', fingerprint: { userAgent: '' } });
     expect((await WorkspaceStore.open(file, secrets)).profile(first.id).fingerprint).toEqual(loaded.profile(first.id).fingerprint);
+  });
+  it('migrates foreign fingerprint languages to English and preserves all other settings', async () => {
+    const { file, store } = await setup(); const profile = await store.saveProfile({ name: 'Legacy language' });
+    const old = JSON.parse(await readFile(file, 'utf8')); old.profiles[0].fingerprint.language = 'nl-NL';
+    await writeFile(file, JSON.stringify(old));
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.profile(profile.id).fingerprint).toEqual({ ...profile.fingerprint, language: 'en-US' });
+    expect((await WorkspaceStore.open(file, secrets)).profile(profile.id).fingerprint).toEqual(loaded.profile(profile.id).fingerprint);
   });
   it('loads older workspaces with default sites and preserves an intentionally empty site list', async () => {
     const { file, store } = await setup();

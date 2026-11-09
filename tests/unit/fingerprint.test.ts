@@ -12,3 +12,14 @@ it('rejects invalid timezones, dimensions, CPU counts and User-Agent injection',
     expect(() => validateFingerprint({ ...fp, ...patch })).toThrow();
   }
 });
+it('generates only Russian or English and rejects other languages on save', () => {
+  const existing = [];
+  for (let i = 0; i < 576; i++) {
+    const fp = generateFingerprint(existing);
+    expect(fp.language).toMatch(/^(ru|en)(-|$)/);
+    existing.push(fp);
+  }
+  const fp = existing[0];
+  for (const language of ['nl-NL', 'de-DE', 'fr-FR']) expect(() => validateFingerprint({ ...fp, language })).toThrow();
+  for (const language of ['ru-RU', 'en-US', 'en-GB']) expect(validateFingerprint({ ...fp, language }).language).toBe(language);
+});

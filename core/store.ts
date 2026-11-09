@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { Profile, ProfileDraft, ProxyDraft, ProxyInfo, Settings, Site, WorkspaceSnapshot } from '../shared/types';
 import { hostName, integer, tags, text, webUrl } from './validation';
-import { generateFingerprint, validateFingerprint } from './fingerprint';
+import { generateFingerprint, migrateFingerprintLanguage, validateFingerprint } from './fingerprint';
 interface SecretCodec { seal(value: string): Promise<string>; open(value: string): Promise<string> }
 interface StoredProxy extends ProxyInfo { secret: string }
 interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings; sites?: Site[] }
@@ -29,8 +29,12 @@ export class WorkspaceStore {
       data = { version: 1, profiles: [], proxies: [], settings: { ...defaults } };
     }
     data.sites ??= structuredClone(defaultSites);
-    const fingerprints = data.profiles.flatMap(p => p.fingerprint ? [validateFingerprint(p.fingerprint)] : []);
     let migrated = false;
+    for (const profile of data.profiles) if (profile.fingerprint) {
+      const language = migrateFingerprintLanguage(profile.fingerprint.language);
+      if (language !== profile.fingerprint.language) { profile.fingerprint.language = language; migrated = true; }
+    }
+    const fingerprints = data.profiles.flatMap(p => p.fingerprint ? [validateFingerprint(p.fingerprint)] : []);
     for (const profile of data.profiles) if (!profile.fingerprint) { profile.fingerprint = generateFingerprint(fingerprints); fingerprints.push(profile.fingerprint); migrated = true; }
     const store = new WorkspaceStore(file, codec, data);
     if (migrated) await store.mutate(() => {});

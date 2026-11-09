@@ -17,13 +17,13 @@ test('profile parameters apply before first script and request, survive restart 
   try {
     const manager = await app.firstWindow();
     const id = await manager.evaluate(async url => {
-      const fingerprint = { ...await window.workspace.generateFingerprint(), language: 'nl-NL', timezone: 'Europe/Amsterdam', screenWidth: 1920, screenHeight: 1080, hardwareConcurrency: 4, userAgent: 'ProfileWorkspace-Test/1.0' };
+      const fingerprint = { ...await window.workspace.generateFingerprint(), language: 'en-GB', timezone: 'Europe/Amsterdam', screenWidth: 1920, screenHeight: 1080, hardwareConcurrency: 4, userAgent: 'ProfileWorkspace-Test/1.0' };
       await window.workspace.saveProfile({ name: 'Parameters', startUrl: url, fingerprint });
       const s = await window.workspace.snapshot(); await window.workspace.launch([s.profiles[0].id]); return s.profiles[0].id;
     }, origin + '/start');
     await expect.poll(() => manager.evaluate(async id => (await window.workspace.snapshot()).runtime[id]?.status, id)).toBe('running');
     const parent = app.windows().find(w => w.url() === origin + '/start')!;
-    const expected = { language: 'nl-NL', timezone: 'Europe/Amsterdam', width: 1920, height: 1080, cores: 4, ua: 'ProfileWorkspace-Test/1.0' };
+    const expected = { language: 'en-GB', timezone: 'Europe/Amsterdam', width: 1920, height: 1080, cores: 4, ua: 'ProfileWorkspace-Test/1.0' };
     expect(await parent.evaluate(() => (window as any).observed)).toEqual(expected);
     expect(headers[0]).toBe(expected.ua);
     await parent.getByRole('button', { name: 'Popup' }).click();
@@ -38,13 +38,15 @@ test('profile parameters apply before first script and request, survive restart 
     expect(await restarted.evaluate(() => (window as any).observed)).toEqual(expected);
     await manager.evaluate(async id => {
       await window.workspace.stop([id]); const profile = (await window.workspace.snapshot()).profiles.find(p => p.id === id)!;
-      await window.workspace.saveProfile({ ...profile, fingerprint: { ...profile.fingerprint!, userAgent: '' } });
+      await window.workspace.saveProfile({ ...profile, fingerprint: { ...profile.fingerprint!, language: 'ru-RU', userAgent: '' } });
       await window.workspace.launch([id]);
     }, id);
     await expect.poll(() => manager.evaluate(async id => (await window.workspace.snapshot()).runtime[id]?.status, id)).toBe('running');
     const automatic = app.windows().find(w => w.url() === origin + '/start')!;
     const actual = await automatic.evaluate(() => (window as any).observed);
     expect(actual.ua).toContain('Chrome/'); expect(actual.ua).not.toMatch(/Electron|ProfileWorkspace|Profile-Workspace/i);
+    expect(actual.language).toBe('ru-RU');
+    expect(await automatic.evaluate(() => navigator.languages.every(l => /^(ru|en)(-|$)/.test(l)))).toBe(true);
     await manager.evaluate(async id => { await window.workspace.stop([id]); await window.workspace.duplicateProfile(id); }, id);
     const fingerprints = await manager.evaluate(async () => (await window.workspace.snapshot()).profiles.map(p => p.fingerprint));
     expect(fingerprints[0]).not.toEqual(fingerprints[1]);
@@ -62,7 +64,8 @@ test('profile form regenerates a draft and persists manual browser parameters', 
     await expect(page.getByLabel('Язык браузера')).not.toHaveValue('');
     await page.getByRole('button', { name: 'Сгенерировать новый', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Сгенерировать новый', exact: true })).toBeEnabled();
-    await page.getByLabel('Язык браузера').fill('en-GB'); await page.getByLabel('Часовой пояс').fill('Europe/London');
+    await page.getByLabel('Язык браузера').selectOption('en-GB'); await page.getByLabel('Часовой пояс').fill('Europe/London');
+    expect(await page.getByLabel('Язык браузера').locator('option').evaluateAll(options => options.map(o => (o as HTMLOptionElement).value).every(v => /^(ru|en)(-|$)/.test(v)))).toBe(true);
     await page.getByLabel('Ширина экрана').fill('1600'); await page.getByLabel('Высота экрана').fill('900'); await page.getByLabel('Логических ядер').fill('8');
     await page.getByRole('dialog').getByRole('button', { name: 'Создать профиль', exact: true }).click();
     await page.getByRole('button', { name: 'Настройки UI parameters', exact: true }).click();
