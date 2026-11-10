@@ -1,1 +1,23 @@
-:root{color-scheme:dark;--bg:#121619;--sidebar:#171c20;--surface:#1b2227;--surface-raised:#222b31;--input:#151c21;--button:#283238;--hover:#2c373e;--selected:#263d37;--text:#edf2f5;--secondary-text:#c6d0d7;--muted:#a6b2bb;--border:#344048;--border-hover:#64737e;--accent:#6ee7cf;--accent-light:#b7f3e2;--on-accent:#102a25;--danger:#ffb2b9}
+:root {
+  color-scheme: dark;
+  --bg: #141415;
+  --sidebar: #101011;
+  --surface: #19191b;
+  --surface-raised: #232325;
+  --input: #1d1d1f;
+  --button: #252527;
+  --hover: #2b2b2e;
+  --selected: #233532;
+  --text: #ededed;
+  --secondary-text: #c2c2c7;
+  --muted: #a1a1a6;
+  --border: #343437;
+  --border-hover: #626267;
+  --accent: #6ee7cf;
+  --accent-light: #b7f3e2;
+  --on-accent: #102a25;
+  --danger: #ffb2b9;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --feedback: 140ms;
+  --enter: 200ms;
+}

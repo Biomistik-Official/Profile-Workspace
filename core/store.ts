@@ -3,7 +3,6 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { Profile, ProfileDraft, ProxyDraft, ProxyInfo, Settings, Site, WorkspaceSnapshot } from '../shared/types';
 import { hostName, integer, tags, text, webUrl } from './validation';
-import { generateFingerprint, migrateFingerprintLanguage, validateFingerprint } from './fingerprint';
 interface SecretCodec { seal(value: string): Promise<string>; open(value: string): Promise<string> }
 interface StoredProxy extends ProxyInfo { secret: string }
 interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings; sites?: Site[] }
@@ -29,16 +28,7 @@ export class WorkspaceStore {
       data = { version: 1, profiles: [], proxies: [], settings: { ...defaults } };
     }
     data.sites ??= structuredClone(defaultSites);
-    let migrated = false;
-    for (const profile of data.profiles) if (profile.fingerprint) {
-      const language = migrateFingerprintLanguage(profile.fingerprint.language);
-      if (language !== profile.fingerprint.language) { profile.fingerprint.language = language; migrated = true; }
-    }
-    const fingerprints = data.profiles.flatMap(p => p.fingerprint ? [validateFingerprint(p.fingerprint)] : []);
-    for (const profile of data.profiles) if (!profile.fingerprint) { profile.fingerprint = generateFingerprint(fingerprints); fingerprints.push(profile.fingerprint); migrated = true; }
-    const store = new WorkspaceStore(file, codec, data);
-    if (migrated) await store.mutate(() => {});
-    return store;
+    return new WorkspaceStore(file, codec, data);
   }
   snapshot(): WorkspaceSnapshot {
     return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, sites: this.data.sites!, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
@@ -72,7 +62,6 @@ export class WorkspaceStore {
       if (input.restoreSessionCookies !== undefined && typeof input.restoreSessionCookies !== 'boolean') throw new Error('Неверная настройка сессии.');
       const now = new Date().toISOString();
       const p: Profile = { id: old?.id ?? randomUUID(), name, notes, proxyId,
-        fingerprint: input.fingerprint !== undefined ? validateFingerprint(input.fingerprint) : old?.fingerprint ?? generateFingerprint(data.profiles.flatMap(p => p.fingerprint ? [p.fingerprint] : [])),
         tags: tags(input.tags ?? old?.tags ?? []), startUrl: webUrl(input.startUrl ?? old?.startUrl ?? data.settings.defaultUrl),
         restoreSessionCookies: input.restoreSessionCookies ?? old?.restoreSessionCookies ?? false,
         createdAt: old?.createdAt ?? now, updatedAt: now, lastOpenedAt: old?.lastOpenedAt ?? null };

@@ -1,16 +1,13 @@
 export type ProfileStatus = 'stopped' | 'queued' | 'starting' | 'running' | 'stopping' | 'error';
 export type ProxyProtocol = 'http' | 'https' | 'socks5';
-export interface Fingerprint { id: string; language: string; timezone: string; screenWidth: number; screenHeight: number; hardwareConcurrency: number; userAgent: string }
 export interface Profile {
   id: string; name: string; notes: string; tags: string[]; proxyId: string | null;
   startUrl: string; restoreSessionCookies: boolean; createdAt: string; updatedAt: string;
   lastOpenedAt: string | null;
-  fingerprint?: Fingerprint;
 }
 export interface ProfileDraft {
   id?: string; name: string; notes?: string; tags?: string[]; proxyId?: string | null;
   startUrl?: string; restoreSessionCookies?: boolean;
-  fingerprint?: Fingerprint;
 }
 export interface ProxyDraft {
   id?: string; name: string; protocol: ProxyProtocol; host: string; port: number;
@@ -59,7 +56,6 @@ export interface WorkspaceApi {
   revealData(): Promise<void>;
   checkUpdates(): Promise<void>;
   closeToUpdate(): Promise<void>;
-  generateFingerprint(current?: Fingerprint): Promise<Fingerprint>;
   onChange(listener: (snapshot: WorkspaceSnapshot) => void): () => void;
 }
 export interface BrowserTab { id: number; title: string; url: string; loading: boolean }

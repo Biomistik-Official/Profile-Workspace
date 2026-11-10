@@ -11,7 +11,6 @@ import { portableCookie, replaceOrMergeCookies } from './cookie-service';
 import { startSocksBridge, type SocksBridge } from './socks-bridge';
 import { autoUpdater } from 'electron-updater';
 import { UpdateController } from './updates';
-import { generateFingerprint, validateFingerprint } from '../core/fingerprint';
 
 app.setName('Profile Workspace');
 if (process.env.PROFILE_WORKSPACE_DATA_DIR) app.setPath('userData', process.env.PROFILE_WORKSPACE_DATA_DIR);
@@ -71,7 +70,7 @@ function profileSession(id: string): Session {
   let ses = sessions.get(id);
   if (!ses) {
     ses = session.fromPartition(`persist:profile-${id}`);
-    const ua = app.userAgentFallback.replace(/\sElectron\/\S+/g, '').replace(/\sprofile-?workspace\/\S+/gi, '');
+    const ua = ses.getUserAgent().replace(/\sElectron\/\S+/g, '').replace(/\sprofile-workspace\/\S+/gi, '');
     ses.setUserAgent(ua);
     ses.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     ses.setPermissionCheckHandler(() => false);
@@ -157,10 +156,6 @@ async function startProfile(id: string): Promise<void> {
   runtime[id] = { status: 'starting' }; cancelledStarts.delete(id); publish();
   try {
     const profile = store.profile(id); const ses = await readySession(id);
-    if (profile.fingerprint) {
-      const ua = app.userAgentFallback.replace(/\sElectron\/\S+/g, '').replace(/\sprofile-?workspace\/\S+/gi, '');
-      ses.setUserAgent(profile.fingerprint.userAgent || ua, `${profile.fingerprint.language},${profile.fingerprint.language.split('-')[0]}`);
-    }
     await configureProxy(ses, profile.proxyId);
     if (profile.proxyId) {
       const ip = await probeProxy(ses);
@@ -201,7 +196,6 @@ function handle(method: string, fn: (...args: any[]) => unknown): void {
 }
 function registerApi(): void {
   handle('snapshot', snapshot);
-  handle('generateFingerprint', (current?: unknown) => generateFingerprint([...store.snapshot().profiles.flatMap(p => p.fingerprint ? [p.fingerprint] : []), ...(current ? [validateFingerprint(current)] : [])]));
   handle('checkUpdates', () => updates?.check());
   handle('closeToUpdate', () => {
     if (updates?.snapshot().status !== 'ready') throw new Error('Обновление ещё не загружено.');
@@ -225,7 +219,7 @@ function registerApi(): void {
   });
   handle('duplicateProfile', async (id: string) => locked(id, async () => {
     const source = store.profile(id); const cookies = (await (await readySession(id)).cookies.get({})).map(portableCookie);
-    const copy = await store.saveProfile({ ...source, id: undefined, fingerprint: undefined, name: `${source.name} — копия` });
+    const copy = await store.saveProfile({ ...source, id: undefined, name: `${source.name} — копия` });
     try { const ses = await readySession(copy.id); if (cookies.length) await replaceOrMergeCookies(ses, cookies, 'merge'); await saveSessionCookies(copy.id, ses); }
     catch (e) { await store.deleteProfiles([copy.id]); throw e; }
   }));
@@ -324,7 +318,7 @@ else {
     updates = new UpdateController(autoUpdater, app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_FILE && !process.env.PROFILE_WORKSPACE_DATA_DIR, publish);
     Menu.setApplicationMenu(null);
     registerApi();
-    manager = new BrowserWindow({ title: 'Profile Workspace', width: 1440, height: 940, minWidth: 900, minHeight: 640, backgroundColor: '#121619', autoHideMenuBar: true,
+    manager = new BrowserWindow({ title: 'Profile Workspace', width: 1440, height: 940, minWidth: 900, minHeight: 640, backgroundColor: '#141415', autoHideMenuBar: true,
       icon: join(__dirname, '../../assets/icon.png'),
       webPreferences: { preload: join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:workspace-ui' } });
     manager.webContents.on('will-navigate', event => event.preventDefault());

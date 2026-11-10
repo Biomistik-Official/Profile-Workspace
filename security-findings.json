@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-09-fingerprint-languages-001",
-  "scan_date": "2026-11-09",
+  "scan_id": "scan-2026-11-10-workspace-2-release",
+  "scan_date": "2026-11-10",
   "scan_type": "working",
-  "commit_range": "3bd0ab7..working-tree",
+  "commit_range": "e3ddce2..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -22,19 +22,16 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 12
+    "files_analyzed": 34
   },
   "verification": {
-    "build": "passed; installer manifest version/size/SHA512 match",
-    "unit_tests": "29 passed, including all 576 generated combinations and language migration/reopen preservation",
-    "electron_ui_integration_tests": "22 suite tests passed; targeted Russian/English page and UI regressions passed again",
-    "source_review": "Author reviewed the complete scoped diff. Language canonicalization admits only ru/en families; foreign legacy languages migrate atomically to en-US while preserving other fingerprint fields. UI uses a constrained select; main-process validation remains authoritative. No new permissions, arbitrary scripts, shell, SQL, templates or secrets.",
-    "publication_inventory": "Source, synthetic tests, documentation and version only; no personal profile data or credentials.",
-    "instructions_review": "No malicious or exfiltration instructions introduced.",
-    "packaged_regressions": "Both parameter and UI tests passed against packaged 0.1.7",
-    "production_upgrade": "Installed 0.1.6 downloaded and applied 0.1.7 through the updater. Every current profile has the expected Russian/English language; profile metadata and all fingerprint fields except language matched the pre-update hash."
+    "source_review": "Reviewed scoped source changes and publication inventory. React renders names, notes, tags and errors as text. Tags remain main-process validated. No SQL, shell/template/HTML execution or new privileged IPC introduced. Fingerprint generation and overrides removed; other privileged modules follow 0.1.5. Sender and main-frame checks, sandboxing, permission denial, encrypted credentials, HTTP(S) validation and no-direct-fallback remain intact.",
+    "instructions_review": "Changed specs/plans/docs contain task scope and no exfiltration or policy-changing instructions.",
+    "publication_inventory": "Source, synthetic tests, documentation and screenshots of fictional data only. Browser partitions, real profile metadata, credentials and backups excluded.",
+    "installer_manifest": "Version, byte length, SHA512 verified against tested 2.0.0 installer; SHA256SUMS refreshed.",
+    "tests": "Fresh release-time run: 25 unit and 24 Electron tests passed. 11 packaged regressions passed on the same installer payload."
   },
   "limitations": [
-    "This change restricts the configured profile language; previously documented basic-emulation limitations remain unchanged."
+    "Source review and targeted pattern scanning do not guarantee absence of vulnerabilities. Unsigned binaries retain the existing release trust model."
   ]
 }

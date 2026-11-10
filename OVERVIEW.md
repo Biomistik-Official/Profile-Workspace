@@ -12,20 +12,27 @@ Implemented Profile Workspace, a standalone Windows browser-profile manager. The
 
 The user approved the graphite/teal concept. UI/UX Pro Max's Minimalism & Swiss Style and bulk-selection guidance fit; its marketing-page layout suggestions did not fit and were discarded. [Running interface screenshot](docs/design/profile-workspace-running.png) uses fictional data in an isolated temporary workspace.
 
+## Version 2.0.0
+
+The user approved the imagegen direction and requested implementation with always-visible notes and light animations. [Approved design](docs/superpowers/specs/2026-11-10-workspace-2-design.md), [implementation ledger](docs/superpowers/plans/2026-11-10-workspace-2.md), [running UI](docs/design/workspace-2-profiles.png), [editor](docs/design/workspace-2-editor.png).
+
+Behavior returns to 0.1.5 (bce5025): the generated fingerprint settings, renderer IPC and native overrides from 0.1.6/0.1.7 are removed. Existing workspace JSON can retain obsolete fingerprint fields; loading no longer validates, generates or migrates them, and they do not affect browsing. Profile IDs, storage partitions and cookies keep their previous ownership.
+
+The UI uses numeric-aware Russian collation for profile names and the tag catalog. `src/components/TagPicker.tsx` provides existing-tag toggle buttons in create/edit/bulk forms, retaining custom comma-separated entry. Bulk tags still replace current tags when nonempty. Profile rows are measured by the virtualizer with a 76px minimum; the full note wraps under its name, errors appear separately, and row actions remain visible. `src/design-v2.css` applies graphite/teal tokens, responsive layout and short opacity/transform transitions with reduced-motion support. Browser shell heights/native content bounds stay unchanged.
+
 ## Architecture and entry points
 
 - `electron/main.ts`: lifecycle, trusted IPC, profile/session ownership, Windows safeStorage, native dialogs, cookie import/export and proxy probes.
 - `electron/socks-bridge.ts`: per-session loopback HTTP bridge through authenticated SOCKS5, using pinned CommonJS proxy-chain 2.7.1. Random local credentials restrict bridge access; remote hostname resolution uses socks5h. Main closes bridges on check completion, failed/cancelled launches, browser close, reconfiguration and shutdown.
 - `electron/browser.ts`: profile browser windows and unprivileged WebContentsView tabs. Each remote view sets `disable_non_proxied_udp`.
 - `src/components/SitesPanel.tsx`: left slide-out site shortcuts inside each profile browser, toggled by the top-left Sites button. Links open new tabs in the current profile session; native views move right by 300 px while the panel is open. Custom links are shared across profiles and saved atomically in `workspace.json`; old workspaces receive Twitch, TikTok, YouTube, Instagram and Supercell Creators defaults. Browser-only IPC validates the shell sender/frame and HTTP(S) URLs.
-- `core/fingerprint.ts`, `electron/fingerprint.ts`: validated persistent per-profile browser parameters and native CDP overrides for language/locale, timezone, screen, logical CPU count and optional User-Agent. Fresh tabs initialize an internal blank renderer before applying overrides and navigating; OAuth child tabs adopt Chromium contents and receive overrides asynchronously. Native User-Agent Client Hints are read from the trusted local browser shell. Defaults follow the actual Chromium version. Legacy profiles are migrated atomically on open; duplicates get fresh generated parameters. The form supports editing/regeneration while stopped. Since 0.1.7 only Russian/English language families are accepted/generated; valid older foreign languages migrate atomically to en-US without changing other parameters. Canvas/WebGL/Audio/fonts/workers remain native; no guarantee of fingerprint uniqueness or login-block removal.
 - `electron/updates.ts`: injected update state controller using electron-updater 6.8.11. Installed Windows builds check stable GitHub releases after 15 seconds and every six hours, auto-download and install on actual quit; no forced restart. Existing before-quit session persistence can cancel shutdown. Manager-only IPC exposes checking and normal quit after download; Settings displays status/progress. Portable/development/PROFILE_WORKSPACE_DATA_DIR instances are disabled. NSIS per-user installer retains appId and userData, publishes installer/blockmap/latest.yml.
 - `electron/preload.ts`: allowlisted renderer bridge; main enforces manager-only versus browser-only calls by sender and frame identity.
 - `electron/cookie-service.ts`: cookie conversion, replace/merge with rollback on browser rejection.
 - `core/store.ts`: serialized mutations and atomic JSON replacement; secrets enter through an injected encryption codec. Public snapshots omit encrypted password payloads.
 - `core/cookies.ts`, `core/validation.ts`: JSON/Netscape exchange and validation. Unsupported partition keys are rejected explicitly.
 - `core/queue.ts`: deduplicated, cancellable start queue with concurrency and interval controls.
-- `src/App.tsx`, `src/components/`, `src/styles.css`: React UI, virtualized profile table, detail panel, native-dialog-backed import workflow, forms and browser toolbar.
+- `src/App.tsx`, `src/components/`, `src/styles.css`, `src/design-v2.css`: React UI, virtualized profile table, detail panel, native-dialog-backed import workflow, forms and browser toolbar.
 - `shared/types.ts`: runtime/renderer contracts. `package.json` points to compiled `dist-electron/electron/main.js`.
 
 Data flow: manager UI → preload → sender-checked main handler → store/session/browser controller → snapshot event. Site pages have sandboxing and context isolation, no Node integration or privileged preload. Persistent partitions are named `persist:profile-<validated UUID>`, separate from `persist:workspace-ui`.
@@ -43,6 +50,8 @@ Each profile owns its Chromium storage and proxy configuration. Persistent cooki
 Authenticated SOCKS5 is supported starting with local version 0.1.1; passwords remain protected by Windows safeStorage, with SOCKS5 credentials limited to 255 UTF-8 bytes per field. See [NordVPN setup](docs/nordvpn-proxy.md). Live NordVPN account connectivity is unverified. Partitioned-cookie exchange, full fingerprint spoofing, extensions, cloud sync are not implemented. Engine updates ship with application updates; installed Windows builds support automatic GitHub updates starting with 0.1.5. Site camera/microphone/location/notification requests are currently denied. Proxy preflight and IP checks use ipify; failed checks never substitute direct access. See README for user-facing limitations, backup and import/export semantics.
 
 ## Commands and constraints
+
+Version 2.0.0: build, 25 unit tests, 24 Electron tests and 11 packaged tests passed. Local installer built and applied; installed payload matches the verified package. Full user-data backup verified before installation; workspace metadata remained byte-identical after upgrade/launch (12 profiles, 6 proxies). GitHub publication was subsequently authorized for v2.0.0. See [delivery report](docs/delivery-2.0.0.md). Earlier verification below describes historical releases.
 
 Version 0.1.7 restricts profile languages to Russian/English. 29 unit tests and 22 Electron tests passed; both parameter/UI regressions passed in the packaged payload. The production updater applied 0.1.6 → 0.1.7; current profile languages match migration expectations and all unrelated metadata/parameters remained unchanged.
 

@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('workspace', {
   ...Object.fromEntries(['snapshot', 'saveProfile', 'duplicateProfile', 'deleteProfiles', 'saveProxy', 'deleteProxy', 'checkProxy', 'saveSettings', 'launch', 'stop', 'cancelQueue', 'bulkUpdate', 'cookies', 'previewCookies', 'importCookies', 'exportCookies', 'clearCookies', 'revealData'].map(method => [method, call(method)])),
   onChange: subscribe('workspace:changed'),
   checkUpdates: call('checkUpdates'), closeToUpdate: call('closeToUpdate'),
-  generateFingerprint: call('generateFingerprint'),
 });
 contextBridge.exposeInMainWorld('browser', {
   ...Object.fromEntries(['state', 'navigate', 'action', 'selectTab', 'closeTab', 'sites', 'saveSite', 'deleteSite', 'openSite', 'setSitesOpen'].map(method => [method, (...args: unknown[]) => ipcRenderer.invoke(`browser:${method}`, ...args)])),
