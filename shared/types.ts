@@ -23,7 +23,7 @@ export interface UpdateState { status: 'disabled' | 'idle' | 'checking' | 'downl
 export interface RuntimeState { status: ProfileStatus; error?: string }
 export interface ProxyCheck { status: 'checking' | 'ok' | 'error'; ip?: string; error?: string; checkedAt?: string }
 export interface WorkspaceSnapshot {
-  profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings; sites: Site[];
+  profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings; sites: Site[]; groups: string[];
   runtime: Record<string, RuntimeState>; proxyChecks: Record<string, ProxyCheck>;
   queue: { pending: number; active: number }; dataPath?: string; version?: string; update?: UpdateState;
 }
@@ -38,6 +38,8 @@ export type CookieFormat = 'json' | 'netscape';
 export interface WorkspaceApi {
   snapshot(): Promise<WorkspaceSnapshot>;
   saveProfile(input: ProfileDraft): Promise<void>;
+  saveGroup(input: { name: string; previousName?: string }): Promise<void>;
+  deleteGroup(name: string): Promise<void>;
   duplicateProfile(id: string): Promise<void>;
   deleteProfiles(ids: string[]): Promise<void>;
   saveProxy(input: ProxyDraft): Promise<void>;

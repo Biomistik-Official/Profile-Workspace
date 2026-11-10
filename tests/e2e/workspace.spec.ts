@@ -6,6 +6,38 @@ let app: ElectronApplication; let data: string;
 test.beforeEach(async () => { data = await mkdtemp(join(tmpdir(), 'workspace-ui-')); const executablePath = process.env.PROFILE_WORKSPACE_TEST_EXECUTABLE; app = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: data } }); });
 test.afterEach(async () => { await app?.close(); await rm(data, { recursive: true, force: true }); });
 
+test('edits persistent groups independently of profiles and offers empty groups in profile forms', async () => {
+  const page = await app.firstWindow();
+  await page.getByRole('button', { name: 'Группы', exact: true }).click();
+  await page.getByRole('button', { name: 'Новая группа', exact: true }).click();
+  await page.getByLabel('Название группы', { exact: true }).fill('Заранее');
+  await page.getByRole('dialog').getByRole('button', { name: 'Создать группу', exact: true }).click();
+  await expect(page.locator('.group-card')).toContainText('Заранее');
+  await page.reload();
+  await expect(page.locator('.sidebar-groups')).toContainText('Заранее');
+  await page.getByRole('button', { name: 'Новый профиль', exact: true }).click();
+  await page.getByLabel('Название профиля').fill('Group test');
+  await page.getByRole('dialog').getByRole('button', { name: 'Заранее', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Создать профиль', exact: true }).click();
+  await page.getByRole('button', { name: 'Группы', exact: true }).click();
+  await page.getByRole('button', { name: 'Переименовать группу Заранее', exact: true }).click();
+  await page.getByLabel('Название группы', { exact: true }).fill('Работа');
+  await page.getByRole('button', { name: 'Сохранить группу', exact: true }).click();
+  await expect.poll(() => page.evaluate(async () => (await window.workspace.snapshot()).profiles[0].tags)).toEqual(['Работа']);
+  await page.evaluate(async () => { const p = (await window.workspace.snapshot()).profiles[0]; await window.workspace.saveProfile({ ...p, tags: [] }); });
+  await page.reload();
+  await expect(page.locator('.sidebar-groups')).toContainText('Работа');
+  await page.getByRole('button', { name: 'Группы', exact: true }).click();
+  await expect(page.locator('.group-card')).toContainText('0 профилей');
+  await expect(page.getByRole('button', { name: 'Группы', exact: true })).toHaveAttribute('aria-current', 'page');
+  await page.mouse.move(1100, 700);
+  await page.screenshot({ path: 'docs/design/workspace-2.0.1-groups.png' });
+  await page.getByRole('button', { name: 'Удалить группу Работа', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить группу', exact: true }).click();
+  await expect(page.locator('.group-card')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(async () => (await window.workspace.snapshot()).profiles.length)).toBe(1);
+});
+
 test('naturally orders numeric and mixed profile names after filtering', async () => {
   const page = await app.firstWindow();
   await page.evaluate(async () => { for (const name of ['12', '2', '11', '1', '10', '3', 'Profile 10', 'Profile 2']) await window.workspace.saveProfile({ name, notes: 'sorting' }); });

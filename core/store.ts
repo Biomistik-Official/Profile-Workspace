@@ -5,7 +5,7 @@ import type { Profile, ProfileDraft, ProxyDraft, ProxyInfo, Settings, Site, Work
 import { hostName, integer, tags, text, webUrl } from './validation';
 interface SecretCodec { seal(value: string): Promise<string>; open(value: string): Promise<string> }
 interface StoredProxy extends ProxyInfo { secret: string }
-interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings; sites?: Site[] }
+interface Data { version: 1; profiles: Profile[]; proxies: StoredProxy[]; settings: Settings; sites?: Site[]; groups?: string[] }
 const defaultSites: Site[] = [
   { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv/' },
   { id: 'tiktok', name: 'TikTok', url: 'https://www.tiktok.com/' },
@@ -28,10 +28,11 @@ export class WorkspaceStore {
       data = { version: 1, profiles: [], proxies: [], settings: { ...defaults } };
     }
     data.sites ??= structuredClone(defaultSites);
+    data.groups = [...new Set([...(data.groups ?? []), ...data.profiles.flatMap(p => p.tags)])];
     return new WorkspaceStore(file, codec, data);
   }
   snapshot(): WorkspaceSnapshot {
-    return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, sites: this.data.sites!, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
+    return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, sites: this.data.sites!, groups: this.data.groups!, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
   }
   profile(id: string): Profile { const p = this.data.profiles.find(p => p.id === id); if (!p) throw new Error('Профиль не найден.'); return structuredClone(p); }
   proxy(id: string): ProxyInfo { const p = this.snapshot().proxies.find(p => p.id === id); if (!p) throw new Error('Прокси не найден.'); return p; }
@@ -66,7 +67,35 @@ export class WorkspaceStore {
         restoreSessionCookies: input.restoreSessionCookies ?? old?.restoreSessionCookies ?? false,
         createdAt: old?.createdAt ?? now, updatedAt: now, lastOpenedAt: old?.lastOpenedAt ?? null };
       if (old) data.profiles[data.profiles.indexOf(old)] = p; else data.profiles.push(p);
+      data.groups = [...new Set([...data.groups!, ...p.tags])];
       return p;
+    });
+  }
+  saveGroup(input: { name: string; previousName?: string }): Promise<void> {
+    return this.mutate(data => {
+      const name = text(input.name, 'Название группы', 40);
+      if (name.includes(',')) throw new Error('Название группы не должно содержать запятую.');
+      const previous = input.previousName;
+      if (previous !== undefined && !data.groups!.includes(previous)) throw new Error('Группа не найдена.');
+      if (name !== previous && data.groups!.includes(name)) throw new Error('Группа с таким названием уже существует.');
+      if (previous === undefined) data.groups!.push(name);
+      else {
+        data.groups = data.groups!.map(g => g === previous ? name : g);
+        for (const p of data.profiles.filter(p => p.tags.includes(previous))) {
+          p.tags = p.tags.map(tag => tag === previous ? name : tag);
+          p.updatedAt = new Date().toISOString();
+        }
+      }
+    });
+  }
+  deleteGroup(name: string): Promise<void> {
+    return this.mutate(data => {
+      if (!data.groups!.includes(name)) throw new Error('Группа не найдена.');
+      data.groups = data.groups!.filter(g => g !== name);
+      for (const p of data.profiles.filter(p => p.tags.includes(name))) {
+        p.tags = p.tags.filter(tag => tag !== name);
+        p.updatedAt = new Date().toISOString();
+      }
     });
   }
   saveSite(input: { name: string; url: string }): Promise<Site> {
@@ -82,6 +111,7 @@ export class WorkspaceStore {
     return this.mutate(data => {
       if (input.proxyId && !data.proxies.some(p => p.id === input.proxyId)) throw new Error('Прокси не найден.');
       const newTags = input.tags === undefined ? undefined : tags(input.tags);
+      if (newTags) data.groups = [...new Set([...data.groups!, ...newTags])];
       for (const p of data.profiles.filter(p => ids.includes(p.id))) {
         if (newTags) p.tags = newTags;
         if (input.proxyId !== undefined) p.proxyId = input.proxyId;

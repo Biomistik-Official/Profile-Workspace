@@ -8,6 +8,35 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('persists empty groups and keeps tags after their last assignment is removed', async () => {
+    const { file, store } = await setup();
+    await store.saveGroup({ name: 'Пустая' });
+    const profile = await store.saveProfile({ name: 'One', tags: ['Работа'] });
+    await store.saveProfile({ ...profile, tags: [] });
+    await store.bulkUpdate([profile.id], { tags: ['Bulk'] });
+    await store.deleteProfiles([profile.id]);
+    expect((await WorkspaceStore.open(file, secrets)).snapshot().groups).toEqual(['Пустая', 'Работа', 'Bulk']);
+  });
+  it('migrates legacy tags and atomically renames and deletes groups without deleting profiles', async () => {
+    const { file, store } = await setup();
+    const p = await store.saveProfile({ name: 'Old', tags: ['Work', 'Other'] });
+    const old = JSON.parse(await readFile(file, 'utf8')); delete old.groups;
+    await writeFile(file, JSON.stringify(old));
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.snapshot().groups).toEqual(['Work', 'Other']);
+    await loaded.saveGroup({ name: 'Renamed', previousName: 'Work' });
+    expect(loaded.profile(p.id).tags).toEqual(['Renamed', 'Other']);
+    await expect(loaded.saveGroup({ name: 'Other', previousName: 'Renamed' })).rejects.toThrow();
+    await expect(loaded.saveGroup({ name: '   ' })).rejects.toThrow();
+    await expect(loaded.saveGroup({ name: 'a,b' })).rejects.toThrow();
+    await expect(loaded.saveGroup({ name: 'x'.repeat(41) })).rejects.toThrow();
+    await expect(loaded.saveGroup({ name: 'Other' })).rejects.toThrow();
+    await loaded.deleteGroup('Renamed');
+    await loaded.deleteGroup('Other');
+    const reopened = await WorkspaceStore.open(file, secrets);
+    expect(reopened.snapshot().groups).toEqual([]);
+    expect(reopened.profile(p.id)).toMatchObject({ name: 'Old', tags: [] });
+  });
   it('loads older workspaces with default sites and preserves an intentionally empty site list', async () => {
     const { file, store } = await setup();
     await store.saveProfile({ name: 'Existing profile' });

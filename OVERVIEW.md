@@ -12,6 +12,14 @@ Implemented Profile Workspace, a standalone Windows browser-profile manager. The
 
 The user approved the graphite/teal concept. UI/UX Pro Max's Minimalism & Swiss Style and bulk-selection guidance fit; its marketing-page layout suggestions did not fit and were discarded. [Running interface screenshot](docs/design/profile-workspace-running.png) uses fictional data in an isolated temporary workspace.
 
+## Version 2.0.1
+
+Groups have an independent persistent `groups: string[]` catalog in `workspace.json`. `WorkspaceStore.open` merges legacy profile tags into the catalog; profile saves and bulk edits register new tags without removing unused groups. `saveGroup` creates or renames a group and updates all assigned profile tags atomically; `deleteGroup` removes the catalog entry and assignments while retaining profiles and browser data. Names follow the tag length limit (40 characters); the editor rejects commas to stay compatible with comma-separated tag inputs. Existing exact-name tag identity and per-profile 30-tag limits remain unchanged.
+
+`src/components/GroupsPage.tsx` adds the Groups navigation page with create/rename dialogs, counts, profile filtering and confirmed deletion. Sidebar filters and create/edit/bulk tag pickers include empty catalog groups. No group-specific IPC accesses browser sessions or proxy credentials; manager-only sender validation applies. Store regressions cover legacy migration, persistence after removing assignments/deleting profiles, validation, rename and delete. The Electron UI regression exercises creating an empty group, selecting it in a profile form, renaming it, removing its last assignment, reloading and deleting the group while retaining the profile.
+
+Verification: build, all 27 unit tests and all 25 Electron tests passed. Both group-editor and create/edit/bulk tag-picker regressions also passed against `release/win-unpacked/Profile Workspace.exe`. [Groups screenshot](docs/design/workspace-2.0.1-groups.png) uses isolated test data. Release artifacts are the NSIS installer, blockmap, `latest.yml` and SHA256 checksums. Publication of v2.0.1 was explicitly requested; no local installation was performed.
+
 ## Version 2.0.0
 
 The user approved the imagegen direction and requested implementation with always-visible notes and light animations. [Approved design](docs/superpowers/specs/2026-11-10-workspace-2-design.md), [implementation ledger](docs/superpowers/plans/2026-11-10-workspace-2.md), [running UI](docs/design/workspace-2-profiles.png), [editor](docs/design/workspace-2-editor.png).

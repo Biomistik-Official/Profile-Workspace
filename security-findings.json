@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-10-workspace-2-release",
+  "scan_id": "scan-2026-11-10-workspace-2.0.1-release",
   "scan_date": "2026-11-10",
   "scan_type": "working",
-  "commit_range": "e3ddce2..working-tree",
+  "commit_range": "7efc256..working-tree",
   "pr_number": null,
   "threat_model_version": "1.1.0",
   "findings": [],
@@ -22,14 +22,14 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 34
+    "files_analyzed": 15
   },
   "verification": {
-    "source_review": "Reviewed scoped source changes and publication inventory. React renders names, notes, tags and errors as text. Tags remain main-process validated. No SQL, shell/template/HTML execution or new privileged IPC introduced. Fingerprint generation and overrides removed; other privileged modules follow 0.1.5. Sender and main-frame checks, sandboxing, permission denial, encrypted credentials, HTTP(S) validation and no-direct-fallback remain intact.",
-    "instructions_review": "Changed specs/plans/docs contain task scope and no exfiltration or policy-changing instructions.",
-    "publication_inventory": "Source, synthetic tests, documentation and screenshots of fictional data only. Browser partitions, real profile metadata, credentials and backups excluded.",
-    "installer_manifest": "Version, byte length, SHA512 verified against tested 2.0.0 installer; SHA256SUMS refreshed.",
-    "tests": "Fresh release-time run: 25 unit and 24 Electron tests passed. 11 packaged regressions passed on the same installer payload."
+    "source_review": "Reviewed persistent group catalog, migration, atomic mutations and React editor. Group IPC passes the existing manager sender/main-frame guard; names are bounded and rendered as text. No SQL, shell commands, dynamic HTML/templates or secret access introduced.",
+    "instructions_review": "Changed documentation contains feature descriptions and no exfiltration or policy-changing instructions.",
+    "publication_inventory": "Only source, lockfile version, synthetic tests, documentation and isolated test screenshot. No real profiles, credentials, cookies or backups included.",
+    "installer_manifest": "2.0.1 version, byte length and SHA512 verified against tested installer. SHA256SUMS refreshed.",
+    "tests": "27 unit and 25 Electron tests passed; 2 packaged group/tag regressions passed. Release-time unit rerun: 27 passed."
   },
   "limitations": [
     "Source review and targeted pattern scanning do not guarantee absence of vulnerabilities. Unsigned binaries retain the existing release trust model."

@@ -196,6 +196,8 @@ function handle(method: string, fn: (...args: any[]) => unknown): void {
 }
 function registerApi(): void {
   handle('snapshot', snapshot);
+  handle('saveGroup', (input: { name: string; previousName?: string }) => store.saveGroup(input));
+  handle('deleteGroup', (name: string) => store.deleteGroup(name));
   handle('checkUpdates', () => updates?.check());
   handle('closeToUpdate', () => {
     if (updates?.snapshot().status !== 'ready') throw new Error('Обновление ещё не загружено.');
