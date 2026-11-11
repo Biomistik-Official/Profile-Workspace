@@ -1,6 +1,6 @@
 # Threat Model for Profile Workspace
 
-Last updated: 2026-11-08. Version: 1.1.0. Methodology: STRIDE and source-level data-flow review.
+Last updated: 2026-11-11. Version: 1.2.0. Methodology: STRIDE and source-level data-flow review.
 
 ## 1. System Overview
 
@@ -19,6 +19,18 @@ Entry points are `electron/main.ts`, `electron/preload.ts`, `electron/browser.ts
 6. Version 2.0.0 removes profile browser-parameter generation, fingerprint IPC and native emulation overrides from 0.1.6/0.1.7. Existing obsolete metadata may remain in local JSON but is not applied. Numeric ordering, tag buttons and wrapped notes render user strings as React text; stored field validation, sender guards, cookie encryption and proxy boundaries remain unchanged.
 
 There is no account-based authentication: access is the local Windows user's access. Profile IDs are generated UUIDs and checked against store membership before partition/file use. Web navigation accepts only HTTP(S); privileged renderer navigation and new-window creation are denied.
+
+## 2.1 Camoufox native backend (2.2.0)
+
+The trusted main process forks a local utility process that loads the pinned Camoufox0.5.9/Playwright-core1.62.0 launcher. No HTTP control port or remote debugging endpoint is exposed by the product. Untrusted web pages run in native Firefox and cannot call manager IPC. Only the manager sender/main frame can request engine installation, profile operations or shared bookmark edits.
+
+Legacy profiles with no engine field retain Chromium. Stored and submitted engine names are validated, and in-place conversion is rejected. Native profile directories are derived from validated UUIDs under userData/camoufox. The private engine runtime lives under LOCALAPPDATA/Profile Workspace/Engines. Its initial files are hard-linked (copied across filesystems) from the downloaded paired browser. Product policies are atomically replaced, breaking the policy-file hard link; upstream installation policy is unchanged. Policy writes are serialized and temporary names are unique. Engine installation and upstream release assets are a supply-chain trust boundary; no claim of protection against same-user tampering is made.
+
+Per-profile native configuration contains device metadata but no proxy credentials or process environment. Proxy credentials travel only over private utility IPC; authenticated SOCKS traffic uses the existing random-auth loopback bridge. Assigned proxies are preflighted; no launch fallback selects direct mode. Native WebRTC and HTTP/3 are disabled; DNS prefetch, network prediction, DoH and direct proxy failover are disabled. Native geolocation, camera and microphone permissions are denied. User locale/timezone are explicit; automated region matching and guaranteed unlinkability are not claimed.
+
+Periodic and response-triggered session snapshots use Windows encryption. Native stop takes an explicit final snapshot; OS-window close uses the latest captured cookies and remains susceptible to abrupt process/OS loss between captures. Failed decryption blocks native restoration rather than overwriting the source. Pending imports are distinguished from restart snapshots so disabling restoration does not reinject old sessions. Worker requests, native event saves and direct pending saves block destructive profile mutations. Timeout retains ownership until a queued stop is confirmed, including a late failed start. Save failures preserve unsaved data for quit recovery.
+
+Shared bookmarks are validated HTTP(S) metadata and serialized as JSON policies in the app-private engine. They appear in a managed toolbar folder on the next native launch; personal Firefox bookmarks outside that folder remain per profile. Bookmarks are intentionally shared between account sessions. Isolated test workspaces share the same Windows user's engine runtime, so native policy tests are run serially. The manager has no cloud bookmark service.
 
 ## 3. Attack Surface Inventory
 
@@ -76,10 +88,12 @@ Unit tests cover cookie validation/round trips, metadata/reference integrity, pr
 
 ## 8. Assumptions and Accepted Risks
 
-The current Windows user, OS credential provider and installed Chromium/Electron runtime are trusted. Public binaries are unsigned. Full anti-detection, CHIPS exchange, richer permission prompts, extension compatibility, cloud sync and automatic engine updates are not implemented. SOCKS5 authentication is supported through pinned proxy-chain 2.7.1; SOCKS5 transport itself is not VPN encryption. Proxy preflight depends on ipify availability. Account servers may revoke a login regardless of local cookie retention. Tests on a separate clean Windows installation and every external provider, including actual NordVPN service credentials, have not been performed.
+The current Windows user, OS credential provider and installed Chromium/Electron runtime are trusted. Public binaries are unsigned. Guaranteed anti-detection, CHIPS exchange, richer permission prompts, arbitrary managed extensions, cloud sync and automatic Camoufox engine updates are not implemented. Camoufox is an opt-in backend for new accounts; actual provider-login acceptance remains unverified. SOCKS5 authentication is supported through pinned proxy-chain 2.7.1; SOCKS5 transport itself is not VPN encryption. Proxy preflight depends on ipify availability. Account servers may revoke a login regardless of local cookie retention. Tests on a separate clean Windows installation and every external provider, including actual NordVPN service credentials, have not been performed.
 
 ## 9. Version Changelog
 
 1.0.0 — initial publication model based on the implemented 0.1.0 source and its existing regression suite. No external targets were scanned.
 
 1.1.0 — authenticated SOCKS5 loopback bridge, credential and remote-DNS boundaries, per-session cleanup. No external targets were scanned.
+
+1.2.0 — native utility backend, immutable engine ownership, private runtime policies, native cookie preservation, timeout/save locks and shared bookmarks. Review covered source, local synthetic fixtures and packaging; no external targets were scanned.

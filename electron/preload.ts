@@ -7,6 +7,7 @@ const subscribe = (channel: string) => (listener: (data: unknown) => void) => {
 contextBridge.exposeInMainWorld('workspace', {
   ...Object.fromEntries(['snapshot', 'saveProfile', 'duplicateProfile', 'deleteProfiles', 'saveProxy', 'deleteProxy', 'checkProxy', 'saveSettings', 'launch', 'stop', 'cancelQueue', 'bulkUpdate', 'cookies', 'previewCookies', 'importCookies', 'exportCookies', 'clearCookies', 'revealData'].map(method => [method, call(method)])),
   onChange: subscribe('workspace:changed'),
+  installEngine: call('installEngine'), saveSite: call('saveSite'), deleteSite: call('deleteSite'),
   saveGroup: call('saveGroup'), deleteGroup: call('deleteGroup'),
   checkUpdates: call('checkUpdates'), closeToUpdate: call('closeToUpdate'),
 });

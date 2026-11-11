@@ -11,7 +11,7 @@ export class ProfileBrowser {
   private shutting = false;
   private closing?: Promise<void>;
   constructor(readonly profile: Profile, readonly session: Session, private renderer: string, private beforeClose: () => Promise<void>, private afterClose: () => void) {
-    this.window = new BrowserWindow({ title: profile.name, width: 1280, height: 850, minWidth: 720, minHeight: 500, backgroundColor: '#101011', autoHideMenuBar: true,
+    this.window = new BrowserWindow({ title: profile.name, width: 1280, height: 850, minWidth: 720, minHeight: 500, backgroundColor: '#101010', autoHideMenuBar: true,
       icon: join(__dirname, '../../assets/icon.png'),
       webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, partition: 'persist:workspace-ui' } });
     this.window.webContents.on('will-navigate', e => e.preventDefault());
@@ -50,7 +50,7 @@ export class ProfileBrowser {
     const [width, height] = this.window.getContentSize();
     for (const [id, view] of this.tabs) { view.setVisible(id === this.activeId); view.setBounds({ x: this.sitesOpen ? 300 : 0, y: 98, width: Math.max(0, width - (this.sitesOpen ? 300 : 0)), height: Math.max(0, height - 98) }); }
   }
-  async addTab(url = 'https://www.google.com/'): Promise<void> {
+  async addTab(url = 'https://duckduckgo.com/'): Promise<void> {
     const address = webUrl(url);
     if (this.closing || this.window.isDestroyed()) return;
     const view = this.createTab();
@@ -106,7 +106,7 @@ export class ProfileBrowser {
   }
   async navigate(input: string): Promise<void> {
     const raw = input.trim();
-    const url = webUrl(/^https?:\/\//i.test(raw) ? raw : raw.includes('.') || raw.startsWith('localhost') ? `https://${raw}` : `https://www.google.com/search?q=${encodeURIComponent(raw)}`);
+    const url = webUrl(/^https?:\/\//i.test(raw) ? raw : raw.includes('.') || raw.startsWith('localhost') ? `https://${raw}` : `https://duckduckgo.com/?q=${encodeURIComponent(raw)}`);
     try { await this.tabs.get(this.activeId)?.webContents.loadURL(url); } catch { /* Chromium error page. */ }
     this.publish();
   }

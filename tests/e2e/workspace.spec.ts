@@ -111,6 +111,7 @@ test('creates, edits, filters and selects real persisted profiles through the in
   await expect(page.getByText('Создайте первый профиль')).toBeVisible();
   await page.getByRole('button', { name: 'Новый профиль', exact: true }).click();
   await page.getByLabel('Название профиля').fill('Рабочий');
+  await page.getByLabel('Движок браузера', { exact: true }).selectOption('chromium');
   await page.getByLabel('Теги через запятую').fill('Работа, Основной');
   await page.getByLabel('Заметка').fill('Сессия для работы');
   await page.getByRole('dialog').getByRole('button', { name: 'Создать профиль', exact: true }).click();
@@ -169,5 +170,7 @@ test('cookie import preview accepts valid records and prevents an empty replacem
   await expect(page.getByRole('button', { name: 'Импортировать cookies', exact: true })).toBeDisabled();
   await expect(page.getByText('Нет валидных cookies. Текущие данные не будут изменены.')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Отмена', exact: true }).click();
+  expect(await page.locator('dialog').count()).toBe(1);
+  await expect(page.locator('dialog')).toHaveCount(0);
   expect(await page.evaluate(async () => (await window.workspace.cookies((await window.workspace.snapshot()).profiles[0].id)).map(c => c.name))).toEqual(['sid']);
 });

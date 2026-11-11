@@ -5,12 +5,13 @@ import { join } from 'node:path';
 import { createServer, type Server } from 'node:http';
 import { createSocket } from 'node:dgram';
 let application: ElectronApplication; let directory: string; let server: Server; let origin: string;
+const executablePath = process.env.PROFILE_WORKSPACE_TEST_EXECUTABLE;
 test.beforeAll(async () => {
   directory = await mkdtemp(join(tmpdir(), 'profile-e2e-'));
   server = createServer((req, res) => { res.setHeader('Content-Type', 'text/html'); if (req.url !== '/blank') res.setHeader('Set-Cookie', ['httponly=secret; HttpOnly; Path=/; Max-Age=3600', 'session_only=hello; Path=/']); res.end('<title>Session test</title><h1>Local session test</h1>' + (req.url === '/blank' ? '' : '<script>document.cookie="persistent=one; Max-Age=3600; Path=/";localStorage.setItem("saved","yes")</script>')); });
   await new Promise<void>(r => server.listen(0, '127.0.0.1', r));
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}/`;
-  application = await electron.launch({ args: ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
+  application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
 });
 test.afterAll(async () => { await application?.close(); await new Promise<void>(r => server?.close(() => r())); await rm(directory, { recursive: true, force: true }); });
 
@@ -94,7 +95,7 @@ test('restores disk-backed profiles, HttpOnly cookies and opted-in session cooki
   }, origin);
   const duplicateId = await manager.evaluate(async id => { await window.workspace.duplicateProfile(id); return (await window.workspace.snapshot()).profiles.find(p => p.name === 'Alpha — копия')!.id; }, profile.id);
   await application.close();
-  application = await electron.launch({ args: ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
+  application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
   manager = await application.firstWindow();
   const persistent = await manager.evaluate(id => window.workspace.cookies(id), profile.id);
   expect(persistent.find(c => c.name === 'persistent')?.value).toBe('one');
@@ -138,7 +139,7 @@ test('hydrates saved session cookies before stopped reads and merge imports afte
   const p = await manager.evaluate(id => window.workspace.previewCookies(id), id);
   await manager.evaluate(({ id, token }) => window.workspace.importCookies(id, token, 'merge'), { id, token: p!.token });
   await application.close();
-  application = await electron.launch({ args: ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
+  application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
   manager = await application.firstWindow();
   expect((await manager.evaluate(id => window.workspace.cookies(id), id)).map(c => c.name)).toEqual(['original_sid']);
   await writeFile(file, JSON.stringify([{ domain: 'example.com', name: 'new_cookie', value: 'additional' }]));
@@ -199,14 +200,14 @@ test('failed snapshot hydration never overwrites or deletes the saved encrypted 
   await mkdir(join(directory, 'session-cookies'), { recursive: true });
   const file = join(directory, 'session-cookies', `${id}.enc`);
   await writeFile(file, original);
-  application = await electron.launch({ args: ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
+  application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
   manager = await application.firstWindow();
   await application.evaluate(({ safeStorage }) => { (globalThis as any).originalDecrypt = safeStorage.decryptStringAsync; safeStorage.decryptStringAsync = async () => { throw new Error('Simulated temporary decryption failure'); }; });
   await expect(manager.evaluate(id => window.workspace.cookies(id), id)).rejects.toThrow();
   await application.evaluate(({ safeStorage }) => { safeStorage.decryptStringAsync = (globalThis as any).originalDecrypt; });
   await application.close();
   expect(await readFile(file, 'utf8')).toBe(original);
-  application = await electron.launch({ args: ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
+  application = await electron.launch({ executablePath, args: executablePath ? [] : ['.'], env: { ...process.env, PROFILE_WORKSPACE_DATA_DIR: directory } });
   await application.firstWindow();
   await (await application.firstWindow()).waitForFunction(() => Boolean(window.workspace));
 });

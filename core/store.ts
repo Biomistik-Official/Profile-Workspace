@@ -13,7 +13,7 @@ const defaultSites: Site[] = [
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/' },
   { id: 'supercell', name: 'Supercell Creators', url: 'https://creators.supercell.com/' },
 ];
-const defaults: Settings = { maxConcurrent: 3, launchDelayMs: 600, defaultUrl: 'https://www.google.com/' };
+const defaults: Settings = { maxConcurrent: 3, launchDelayMs: 600, defaultUrl: 'https://duckduckgo.com/' };
 export class WorkspaceStore {
   private tail: Promise<unknown> = Promise.resolve();
   private constructor(private file: string, private codec: SecretCodec, private data: Data) {}
@@ -23,6 +23,7 @@ export class WorkspaceStore {
       data = JSON.parse(await readFile(file, 'utf8'));
       if (data.version !== 1 || !Array.isArray(data.profiles) || !Array.isArray(data.proxies) || !data.settings) throw new Error('Неподдерживаемая структура данных.');
       for (const item of [...data.profiles, ...data.proxies]) if (!/^[a-f0-9-]{36}$/.test(item.id)) throw new Error('Повреждён идентификатор.');
+      for (const profile of data.profiles) if (profile.engine !== undefined && !['chromium', 'camoufox'].includes(profile.engine)) throw new Error('Неизвестный движок профиля.');
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw new Error('Не удалось открыть workspace.json. Данные сохранены; проверьте файл или резервную копию.');
       data = { version: 1, profiles: [], proxies: [], settings: { ...defaults } };
@@ -55,6 +56,16 @@ export class WorkspaceStore {
     return this.mutate(data => {
       const old = input.id ? data.profiles.find(p => p.id === input.id) : undefined;
       if (input.id && !old) throw new Error('Профиль не найден.');
+      const engine = input.engine ?? old?.engine ?? 'chromium';
+      if (!['chromium', 'camoufox'].includes(engine)) throw new Error('Неизвестный движок браузера.');
+      if (old && engine !== (old.engine ?? 'chromium')) throw new Error('Нельзя менять движок существующего профиля: создайте отдельный профиль, чтобы сохранить аккаунт.');
+      let nativeSettings = input.nativeSettings ?? old?.nativeSettings;
+      if (engine === 'camoufox') {
+        nativeSettings ??= { locale: 'en-US', timezone: 'Europe/London' };
+        if (!['ru-RU', 'en-US', 'en-GB'].includes(nativeSettings.locale)) throw new Error('Выберите русский или английский язык браузера.');
+        try { new Intl.DateTimeFormat('en', { timeZone: nativeSettings.timezone }).format(); } catch { throw new Error('Неизвестный часовой пояс IANA.'); }
+        if (typeof nativeSettings.timezone !== 'string' || nativeSettings.timezone.length > 80) throw new Error('Неверный часовой пояс.');
+      }
       const name = text(input.name, 'Название', 120);
       const proxyId = input.proxyId === undefined ? old?.proxyId ?? null : input.proxyId;
       if (proxyId && !data.proxies.some(p => p.id === proxyId)) throw new Error('Выбранный прокси не существует.');
@@ -65,7 +76,8 @@ export class WorkspaceStore {
       const p: Profile = { id: old?.id ?? randomUUID(), name, notes, proxyId,
         tags: tags(input.tags ?? old?.tags ?? []), startUrl: webUrl(input.startUrl ?? old?.startUrl ?? data.settings.defaultUrl),
         restoreSessionCookies: input.restoreSessionCookies ?? old?.restoreSessionCookies ?? false,
-        createdAt: old?.createdAt ?? now, updatedAt: now, lastOpenedAt: old?.lastOpenedAt ?? null };
+        createdAt: old?.createdAt ?? now, updatedAt: now, lastOpenedAt: old?.lastOpenedAt ?? null,
+        ...(engine === 'camoufox' ? { engine, nativeSettings } : old?.engine ? { engine } : {}) };
       if (old) data.profiles[data.profiles.indexOf(old)] = p; else data.profiles.push(p);
       data.groups = [...new Set([...data.groups!, ...p.tags])];
       return p;

@@ -1,7 +1,7 @@
 {
   "name": "profile-workspace",
   "productName": "Profile Workspace",
-  "version": "2.0.1",
+  "version": "2.2.0",
   "private": true,
   "description": "Local browser profiles, cookies and proxies without subscriptions",
   "author": "Biomistik",
@@ -9,17 +9,20 @@
   "scripts": {
     "dev": "npm run build && electron .",
     "start": "electron .",
-    "build": "tsc -p tsconfig.electron.json && tsc --noEmit && vite build",
+    "build": "tsc -p tsconfig.electron.json && node scripts/copy-runtime.cjs && tsc --noEmit && vite build",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "pack": "npm run build && electron-builder --win --dir",
     "dist": "npm run build && electron-builder --win nsis --publish never",
-    "dist:portable": "npm run build && electron-builder --win portable --publish never"
+    "dist:portable": "npm run build && electron-builder --win portable --publish never",
+    "test:native": "playwright test -c playwright.native.config.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "3.14.26",
+    "camoufox": "0.5.9",
     "electron-updater": "6.8.11",
     "lucide-react": "1.70.0",
+    "playwright-core": "1.62.0",
     "proxy-chain": "2.7.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
@@ -37,7 +40,8 @@
     "vitest": "5.1.0"
   },
   "overrides": {
-    "minimatch": "11.0.1"
+    "minimatch": "11.0.1",
+    "ua-parser-js": "1.0.41"
   },
   "build": {
     "appId": "tech.biomistik.profileworkspace",
@@ -73,6 +77,13 @@
         "owner": "Biomistik-Official",
         "repo": "Profile-Workspace"
       }
+    ],
+    "asarUnpack": [
+      "node_modules/impit/**",
+      "node_modules/@impit/**",
+      "node_modules/playwright-core/**",
+      "dist-electron/electron/camoufox-worker.mjs",
+      "dist-electron/electron/native-runtime.mjs"
     ]
   }
 }

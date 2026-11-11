@@ -1,10 +1,10 @@
 {
-  "scan_id": "scan-2026-11-10-workspace-2.0.1-release",
-  "scan_date": "2026-11-10",
-  "scan_type": "working",
-  "commit_range": "7efc256..working-tree",
+  "scan_id": "scan-2026-11-11-native-camoufox-2.2.0",
+  "scan_date": "2026-11-11",
+  "scan_type": "staged",
+  "commit_range": "6557e3a..staged",
   "pr_number": null,
-  "threat_model_version": "1.1.0",
+  "threat_model_version": "1.2.0",
   "findings": [],
   "summary": {
     "total_findings": 0,
@@ -22,16 +22,19 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 15
+    "files_analyzed": 59
   },
   "verification": {
-    "source_review": "Reviewed persistent group catalog, migration, atomic mutations and React editor. Group IPC passes the existing manager sender/main-frame guard; names are bounded and rendered as text. No SQL, shell commands, dynamic HTML/templates or secret access introduced.",
-    "instructions_review": "Changed documentation contains feature descriptions and no exfiltration or policy-changing instructions.",
-    "publication_inventory": "Only source, lockfile version, synthetic tests, documentation and isolated test screenshot. No real profiles, credentials, cookies or backups included.",
-    "installer_manifest": "2.0.1 version, byte length and SHA512 verified against tested installer. SHA256SUMS refreshed.",
-    "tests": "27 unit and 25 Electron tests passed; 2 packaged group/tag regressions passed. Release-time unit rerun: 27 passed."
+    "source_review": "Reviewed native utility IPC, immutable and validated engine ownership, private engine installation/policy writes, cookie conversion/restoration/import rollback, proxy routing, pending saves, timeout/late-response cleanup and new manager bookmark methods. Existing manager sender/main-frame guards remain mandatory. No arbitrary shell, SQL or dynamic HTML sink introduced in production; profile CSS content is string-escaped and all generated paths derive from validated IDs.",
+    "review_fixes": "Independent review drove timeout ownership retention/confirmed-stop cleanup, event/direct-save mutation locks, restore toggle semantics and serialized policy writes with unique temporary names. Native runtime status and packaging imports verified.",
+    "secret_scan": "57 staged source/artifact paths scanned for private keys, GitHub/AWS token patterns and private-data path segments; no potential secrets found. Test proxy/password/cookie literals are synthetic localhost fixtures. Unrelated landing directory, real userData, backups, engine cache and generated build outputs are excluded.",
+    "instructions_review": "New plans and documentation describe authorized implementation and contain no instructions to exfiltrate secrets or override runtime trust boundaries.",
+    "dependencies": "Pinned Camoufox0.5.9 and compatible Playwright-core1.62.0; compatible MIT UA-parser1.0.41 override. npm audit --omit=dev reports zero vulnerabilities. Third-party notices retained.",
+    "release_manifest": "Version2.2.0, installer byte size and SHA512 match latest.yml; SHA256SUMS generated for installer, blockmap and manifest.",
+    "tests": "33 unit,30 development Electron,29 packaged manager/legacy and3 packaged native scenarios passed. Final native run uses the exact installed ASAR; live titlebar icon peach and511 account data hashes unchanged.",
+    "installation": "Installer exit0, installed ASAR SHA256 matches tested package, version2.2.0.0,15 profiles6 proxies6 shared bookmarks retained. Verified full backup34454 files remains outside publication."
   },
   "limitations": [
-    "Source review and targeted pattern scanning do not guarantee absence of vulnerabilities. Unsigned binaries retain the existing release trust model."
+    "Source review and dependency audit do not prove absence of vulnerabilities. Windows runtime/unsigned release/upstream engine are trusted. Abrupt browser/OS loss may lose changes since the last native snapshot. Real provider-account acceptance and a separate clean machine were not tested."
   ]
 }

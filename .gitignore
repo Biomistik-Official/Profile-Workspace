@@ -12,6 +12,8 @@ playwright-report/
 workspace.json
 workspace.json.tmp
 session-cookies/
+camoufox/
+camoufox-sessions/
 Partitions/
 *.enc
 *.sqlite

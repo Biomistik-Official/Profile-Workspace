@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, safeStorage, session, shell, type Session, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, session, shell, type Session, type IpcMainInvokeEvent } from 'electron';
 import { join, basename } from 'node:path';
 import { mkdir, readFile, writeFile, rename, rm, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -11,8 +11,10 @@ import { portableCookie, replaceOrMergeCookies } from './cookie-service';
 import { startSocksBridge, type SocksBridge } from './socks-bridge';
 import { autoUpdater } from 'electron-updater';
 import { UpdateController } from './updates';
+import { CamoufoxController } from './camoufox';
 
 app.setName('Profile Workspace');
+nativeTheme.themeSource = 'dark';
 if (process.env.PROFILE_WORKSPACE_DATA_DIR) app.setPath('userData', process.env.PROFILE_WORKSPACE_DATA_DIR);
 const dataRoot = app.getPath('userData');
 const renderer = join(__dirname, '../../dist/index.html');
@@ -20,6 +22,11 @@ let manager: BrowserWindow;
 let store: WorkspaceStore;
 let quitting = false;
 let updates: UpdateController | undefined;
+let native: CamoufoxController;
+const nativeProxySessions = new Map<string, Session>();
+const nativeSaveTails = new Map<string, Promise<void>>();
+const nativeImports = new Set<string>();
+const nativeUnsaved = new Map<string, { cookies: PortableCookie[]; ending: boolean }>();
 const browsers = new Map<string, ProfileBrowser>();
 const runtime: Record<string, RuntimeState> = {};
 const proxyChecks: Record<string, ProxyCheck> = {};
@@ -37,7 +44,7 @@ function snapshot(): WorkspaceSnapshot {
   const state = store.snapshot();
   const states = { ...runtime };
   for (const id of queue.pendingIds()) states[id] = { status: 'queued' };
-  return { ...state, runtime: states, proxyChecks: { ...proxyChecks }, queue: queue.state(), dataPath: dataRoot, version: app.getVersion(), update: updates?.snapshot() };
+  return { ...state, runtime: states, proxyChecks: { ...proxyChecks }, queue: queue.state(), dataPath: dataRoot, version: app.getVersion(), update: updates?.snapshot(), engine: native?.state };
 }
 function publish(): void { if (store && manager && !manager.isDestroyed()) manager.webContents.send('workspace:changed', snapshot()); }
 function ids(input: unknown): string[] {
@@ -46,7 +53,8 @@ function ids(input: unknown): string[] {
 }
 function assertStopped(id: string): void {
   store.profile(id);
-  if (browsers.has(id) || queue.contains(id) || ['starting', 'stopping'].includes(runtime[id]?.status)) throw new Error('Сначала остановите профиль и уберите его из очереди.');
+  if (nativeUnsaved.has(id)) throw new Error('Дождитесь сохранения сессии профиля.');
+  if (browsers.has(id) || native?.isRunning(id) || native?.isBusy(id) || queue.contains(id) || ['starting', 'stopping'].includes(runtime[id]?.status)) throw new Error('Сначала остановите профиль и уберите его из очереди.');
 }
 async function locked<T>(id: string, fn: () => Promise<T>): Promise<T> {
   assertStopped(id);
@@ -150,11 +158,65 @@ async function readySession(id: string): Promise<Session> {
   hydratedSessions.set(id, promise);
   try { return await promise; } catch (e) { hydratedSessions.delete(id); throw e; }
 }
+function isNative(id: string): boolean { return store.profile(id).engine === 'camoufox'; }
+async function nativeSession(id: string): Promise<PortableCookie[]> {
+  let raw: string;
+  try { raw = await readFile(join(dataRoot, 'camoufox-sessions', `${id}.enc`), 'utf8'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
+  const parsed = JSON.parse(await decrypt(raw));
+  if (parsed.pending === true) nativeImports.add(id);
+  return store.profile(id).restoreSessionCookies || parsed.pending === true ? parseCookies(JSON.stringify(parsed)).cookies : [];
+}
+function saveNativeCookies(id: string, cookies: PortableCookie[], ending: boolean): Promise<void> {
+  const pending = { cookies, ending }; nativeUnsaved.set(id, pending);
+  const task = (nativeSaveTails.get(id) ?? Promise.resolve()).catch(() => {}).then(async () => {
+    const profile = store.profile(id), file = join(dataRoot, 'camoufox-sessions', `${id}.enc`);
+    const sessionCookies = cookies.filter(cookie => !cookie.expirationDate);
+    if ((profile.restoreSessionCookies || !ending && nativeImports.has(id)) && sessionCookies.length) {
+      const sealed = await encrypt(JSON.stringify({ cookies: sessionCookies, pending: !ending && nativeImports.has(id) }));
+      await mkdir(join(dataRoot, 'camoufox-sessions'), { recursive: true });
+      await writeFile(`${file}.tmp`, sealed, { mode: 0o600 }); await rename(`${file}.tmp`, file);
+    } else await rm(file, { force: true });
+    if (ending) nativeImports.delete(id);
+    if (nativeUnsaved.get(id) === pending) nativeUnsaved.delete(id);
+  });
+  nativeSaveTails.set(id, task); return task;
+}
+async function nativeCookies(id: string, command = 'cookies', extra: object = {}): Promise<PortableCookie[]> {
+  await nativeSaveTails.get(id);
+  const result = await native.request<PortableCookie[]>(command, { profile: store.profile(id), sessionCookies: await nativeSession(id), sites: store.snapshot().sites, ...extra });
+  if (command === 'import') nativeImports.add(id);
+  if (command === 'clear') nativeImports.delete(id);
+  await saveNativeCookies(id, result, false); return result;
+}
+async function profileCookies(id: string): Promise<PortableCookie[]> {
+  return isNative(id) ? nativeCookies(id) : (await (await readySession(id)).cookies.get({})).map(portableCookie);
+}
+async function releaseNativeProxy(id: string): Promise<void> {
+  const ses = nativeProxySessions.get(id); nativeProxySessions.delete(id); if (ses) await releaseProxy(ses);
+}
+async function startNative(id: string): Promise<void> {
+  const profile = store.profile(id); let proxy: { server: string; username?: string; password?: string } | undefined;
+  if (profile.proxyId) {
+    const ses = session.fromPartition(`native-proxy-${id}`); nativeProxySessions.set(id, ses);
+    await configureProxy(ses, profile.proxyId);
+    const ip = await probeProxy(ses); proxyChecks[profile.proxyId] = { status: 'ok', ip, checkedAt: new Date().toISOString() };
+    const bridge = socksBridges.get(ses);
+    if (bridge) proxy = { server: bridge.proxyRules, username: bridge.credentials.username, password: bridge.credentials.password };
+    else { const p = store.proxy(profile.proxyId); proxy = { server: `${p.protocol}://${p.host}:${p.port}`, ...await store.proxyCredentials(p.id) }; }
+  }
+  if (cancelledStarts.has(id) || quitting) { await releaseNativeProxy(id); return; }
+  await native.start(profile, await nativeSession(id), proxy, store.snapshot().sites);
+  if (cancelledStarts.has(id) || quitting) { await native.stop(profile); return; }
+  if (native.isRunning(id)) { await store.markOpened(id); if (native.isRunning(id)) runtime[id] = { status: 'running' }; }
+}
 async function startProfile(id: string): Promise<void> {
+  if (native?.isRunning(id)) { native.focus(store.profile(id)); return; }
   if (browsers.has(id)) { browsers.get(id)!.window.focus(); return; }
   if (mutations.has(id)) { runtime[id] = { status: 'error', error: 'Дождитесь завершения операции с профилем.' }; publish(); return; }
   runtime[id] = { status: 'starting' }; cancelledStarts.delete(id); publish();
   try {
+    if (isNative(id)) { await startNative(id); return; }
     const profile = store.profile(id); const ses = await readySession(id);
     await configureProxy(ses, profile.proxyId);
     if (profile.proxyId) {
@@ -172,8 +234,10 @@ async function startProfile(id: string): Promise<void> {
   } catch (e) {
     const cancelled = cancelledStarts.has(id) || quitting;
     const browser = browsers.get(id); if (browser) await browser.close().catch(() => {});
-    runtime[id] = cancelled ? { status: 'stopped' } : { status: 'error', error: (e as Error).message }; publish();
+    runtime[id] = cancelled ? { status: 'stopped' } : isNative(id) && native.isRunning(id) ? { status: 'stopping', error: (e as Error).message } : { status: 'error', error: (e as Error).message }; publish();
   } finally {
+    if (isNative(id) && !native.isRunning(id)) await releaseNativeProxy(id);
+    if (runtime[id]?.status === 'starting') runtime[id] = { status: 'stopped' };
     if (!browsers.has(id)) { const ses = sessions.get(id); if (ses) await releaseProxy(ses); }
     cancelledStarts.delete(id); publish();
   }
@@ -182,6 +246,7 @@ async function stopProfiles(list: string[]): Promise<void> {
   queue.cancel(list);
   for (const id of list) {
     cancelledStarts.add(id);
+    if (native.isRunning(id)) { runtime[id] = { status: 'stopping' }; publish(); await native.stop(store.profile(id)); await releaseNativeProxy(id); }
     const browser = browsers.get(id);
     if (browser) { runtime[id] = { status: 'stopping' }; publish(); await browser.close(); }
     else if (runtime[id]?.status !== 'starting') runtime[id] = { status: 'stopped' };
@@ -196,6 +261,9 @@ function handle(method: string, fn: (...args: any[]) => unknown): void {
 }
 function registerApi(): void {
   handle('snapshot', snapshot);
+  handle('installEngine', () => native.install(store.snapshot().sites));
+  handle('saveSite', (input: { name: string; url: string }) => store.saveSite(input));
+  handle('deleteSite', (id: string) => store.deleteSite(id));
   handle('saveGroup', (input: { name: string; previousName?: string }) => store.saveGroup(input));
   handle('deleteGroup', (name: string) => store.deleteGroup(name));
   handle('checkUpdates', () => updates?.check());
@@ -205,7 +273,8 @@ function registerApi(): void {
     app.quit();
   });
   handle('saveProfile', async (input: ProfileDraft) => {
-    if (input.id) await locked(input.id, async () => { const ses = await readySession(input.id!); await store.saveProfile(input); await saveSessionCookies(input.id!, ses); }); else await store.saveProfile(input);
+    if (input.id && isNative(input.id)) await locked(input.id, () => store.saveProfile(input));
+    else if (input.id) await locked(input.id, async () => { const ses = await readySession(input.id!); await store.saveProfile(input); await saveSessionCookies(input.id!, ses); }); else await store.saveProfile(input);
   });
   handle('deleteProfiles', async (input: unknown) => {
     const list = ids(input); list.forEach(assertStopped);
@@ -215,14 +284,17 @@ function registerApi(): void {
     // Recheck after the modal dialog: launch IPC may have arrived meanwhile.
     list.forEach(assertStopped); list.forEach(id => mutations.add(id));
     try {
-      for (const id of list) { const ses = profileSession(id); await ses.clearStorageData(); await ses.clearCache(); await rm(join(dataRoot, 'session-cookies', `${id}.enc`), { force: true }); }
-      await store.deleteProfiles(list); list.forEach(id => { delete runtime[id]; sessions.delete(id); hydratedSessions.delete(id); });
+      for (const id of list) {
+        if (isNative(id)) { await rm(join(dataRoot, 'camoufox', id), { recursive: true, force: true }); await rm(join(dataRoot, 'camoufox-sessions', `${id}.enc`), { force: true }); continue; }
+        const ses = profileSession(id); await ses.clearStorageData(); await ses.clearCache(); await rm(join(dataRoot, 'session-cookies', `${id}.enc`), { force: true }); }
+      await store.deleteProfiles(list); list.forEach(id => { delete runtime[id]; sessions.delete(id); hydratedSessions.delete(id); nativeImports.delete(id); nativeUnsaved.delete(id); nativeSaveTails.delete(id); });
     } finally { list.forEach(id => mutations.delete(id)); }
   });
   handle('duplicateProfile', async (id: string) => locked(id, async () => {
-    const source = store.profile(id); const cookies = (await (await readySession(id)).cookies.get({})).map(portableCookie);
+    const source = store.profile(id); const cookies = await profileCookies(id);
     const copy = await store.saveProfile({ ...source, id: undefined, name: `${source.name} — копия` });
-    try { const ses = await readySession(copy.id); if (cookies.length) await replaceOrMergeCookies(ses, cookies, 'merge'); await saveSessionCookies(copy.id, ses); }
+    try { if (copy.engine === 'camoufox') { if (cookies.length) await nativeCookies(copy.id, 'import', { cookies, mode: 'merge' }); return; }
+      const ses = await readySession(copy.id); if (cookies.length) await replaceOrMergeCookies(ses, cookies, 'merge'); await saveSessionCookies(copy.id, ses); }
     catch (e) { await store.deleteProfiles([copy.id]); throw e; }
   }));
   handle('saveProxy', async (input: ProxyDraft) => { const list = input.id ? store.snapshot().profiles.filter(p => p.proxyId === input.id).map(p => p.id) : []; await lockedProfiles(list, async () => { await store.saveProxy(input); if (input.id) delete proxyChecks[input.id]; }); });
@@ -240,14 +312,14 @@ function registerApi(): void {
   handle('saveSettings', async (input: Settings) => { await store.saveSettings(input); queue.configure(store.snapshot().settings); });
   handle('launch', (input: unknown) => {
     if (quitting) throw new Error('Приложение закрывается.');
-    const list = ids(input); if (list.some(id => mutations.has(id))) throw new Error('Дождитесь завершения операции с cookies или профилем.');
-    list.forEach(id => { if (browsers.has(id)) browsers.get(id)!.window.focus(); });
-    queue.enqueue(list.filter(id => !browsers.has(id)));
+    const list = ids(input); if (list.some(id => mutations.has(id) || native.isBusy(id) || nativeUnsaved.has(id))) throw new Error('Дождитесь завершения операции с cookies или профилем.');
+    list.forEach(id => { if (browsers.has(id)) browsers.get(id)!.window.focus(); if (native.isRunning(id)) native.focus(store.profile(id)); });
+    queue.enqueue(list.filter(id => !browsers.has(id) && !native.isRunning(id)));
   });
   handle('stop', (input: unknown) => stopProfiles(ids(input)));
   handle('cancelQueue', () => queue.cancel());
   handle('bulkUpdate', async (input: unknown, patch: { tags?: string[]; proxyId?: string | null }) => { const list = ids(input); await lockedProfiles(list, () => store.bulkUpdate(list, patch)); });
-  handle('cookies', async (id: string) => (await (await readySession(id)).cookies.get({})).map(portableCookie));
+  handle('cookies', profileCookies);
   handle('previewCookies', async (id: string) => {
     assertStopped(id);
     const chosen = await dialog.showOpenDialog(manager, { title: 'Импорт cookies', properties: ['openFile'], filters: [{ name: 'Cookies (JSON / Netscape)', extensions: ['json', 'txt', 'cookies'] }, { name: 'Все файлы', extensions: ['*'] }] });
@@ -263,6 +335,8 @@ function registerApi(): void {
     if (!preview || preview.profileId !== id || Date.now() - preview.createdAt > 600000) throw new Error('Предпросмотр истёк. Выберите файл ещё раз.');
     if (!preview.cookies.length) throw new Error('Нет валидных cookies. Данные не изменены.');
     if (mode === 'replace') { const answer = await dialog.showMessageBox(manager, { type: 'warning', message: 'Заменить все cookies этого профиля?', detail: 'Текущие cookies будут заменены импортируемыми.', buttons: ['Отмена', 'Заменить'], defaultId: 0, cancelId: 0 }); if (answer.response !== 1) return 0; }
+    if (!['merge', 'replace'].includes(mode)) throw new Error('Неверный режим импорта.');
+    if (isNative(id)) { await nativeCookies(id, 'import', { cookies: preview.cookies, mode }); cookiePreviews.delete(token); return preview.cookies.length; }
     const ses = await readySession(id); const count = await replaceOrMergeCookies(ses, preview.cookies, mode);
     await saveSessionCookies(id, ses); cookiePreviews.delete(token); return count;
   }));
@@ -273,13 +347,14 @@ function registerApi(): void {
     if (warning.response !== 1) return false;
     const chosen = await dialog.showSaveDialog(manager, { title: 'Экспорт cookies', defaultPath: list.length > 1 ? 'profiles-cookies.json' : `cookies-${list[0].slice(0, 8)}.${format === 'json' ? 'json' : 'txt'}` });
     if (chosen.canceled || !chosen.filePath) return false;
-    const profiles = await Promise.all(list.map(async id => ({ name: store.profile(id).name, cookies: (await (await readySession(id)).cookies.get({})).map(portableCookie) })));
+    const profiles = await Promise.all(list.map(async id => ({ name: store.profile(id).name, cookies: await profileCookies(id) })));
     const output = list.length > 1 ? JSON.stringify({ format: 'profile-workspace-cookies-v1', profiles }, null, 2) : serializeCookies(profiles[0].cookies, format);
     await writeFile(chosen.filePath, output, { mode: 0o600 }); return true;
   });
   handle('clearCookies', async (id: string) => locked(id, async () => {
     const answer = await dialog.showMessageBox(manager, { type: 'warning', message: 'Очистить cookies профиля?', detail: 'Сайты могут запросить повторный вход. Остальные хранилища сайтов останутся.', buttons: ['Отмена', 'Очистить'], defaultId: 0, cancelId: 0 });
     if (answer.response !== 1) return;
+    if (isNative(id)) { await nativeCookies(id, 'clear'); return; }
     const ses = await readySession(id); await ses.clearStorageData({ storages: ['cookies'] }); await ses.cookies.flushStore(); await rm(join(dataRoot, 'session-cookies', `${id}.enc`), { force: true });
   }));
   handle('revealData', () => shell.openPath(dataRoot));
@@ -314,13 +389,18 @@ else {
   });
   app.whenReady().then(async () => {
     store = await WorkspaceStore.open(join(dataRoot, 'workspace.json'), { seal: encrypt, open: decrypt });
+    native = new CamoufoxController(dataRoot, publish, saveNativeCookies, id => {
+      if (runtime[id]?.status === 'starting') cancelledStarts.add(id);
+      runtime[id] = { status: 'stopped' }; void releaseNativeProxy(id).catch(() => {}); publish();
+    });
+    void native.check().catch(error => { native.state = { status: 'error', error: error.message }; publish(); });
     if (quitting) { app.quit(); return; }
     queue.configure(store.snapshot().settings);
     autoUpdater.logger = null;
     updates = new UpdateController(autoUpdater, app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_FILE && !process.env.PROFILE_WORKSPACE_DATA_DIR, publish);
     Menu.setApplicationMenu(null);
     registerApi();
-    manager = new BrowserWindow({ title: 'Profile Workspace', width: 1440, height: 940, minWidth: 900, minHeight: 640, backgroundColor: '#141415', autoHideMenuBar: true,
+    manager = new BrowserWindow({ title: 'Profile Workspace', width: 1440, height: 940, minWidth: 900, minHeight: 640, backgroundColor: '#101010', autoHideMenuBar: true,
       icon: join(__dirname, '../../assets/icon.png'),
       webPreferences: { preload: join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:workspace-ui' } });
     manager.webContents.on('will-navigate', event => event.preventDefault());
@@ -334,10 +414,13 @@ else {
     event.preventDefault(); quitting = true; queue.cancel();
     void (async () => {
       for (const id of Object.keys(runtime)) cancelledStarts.add(id);
+      let nativeFailed = false;
+      await Promise.all(store.snapshot().profiles.filter(p => p.engine === 'camoufox' && native.isRunning(p.id)).map(p => native.stop(p).catch(() => { nativeFailed = true; })));
       await Promise.all([...browsers.values()].map(b => b.close().catch(() => {})));
       await queue.idle();
       await Promise.all([...socksBridges.keys()].map(ses => releaseProxy(ses)));
-      let failed = false;
+      let failed = nativeFailed;
+      try { await native.flush(); for (const [id, pending] of [...nativeUnsaved]) await saveNativeCookies(id, pending.cookies, pending.ending); } catch { failed = true; }
       // Retry after closing tabs; also persist sessions changed without launching a browser.
       for (const [id, hydration] of hydratedSessions) {
         try { await saveSessionCookies(id, await hydration, true); } catch { failed = true; }
@@ -350,5 +433,6 @@ else {
       app.quit();
     })();
   });
+  app.on('will-quit', () => native?.dispose());
   app.on('window-all-closed', () => { if (!quitting) app.quit(); });
 }

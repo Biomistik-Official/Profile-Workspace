@@ -1,13 +1,18 @@
 export type ProfileStatus = 'stopped' | 'queued' | 'starting' | 'running' | 'stopping' | 'error';
 export type ProxyProtocol = 'http' | 'https' | 'socks5';
+export type BrowserEngine = 'chromium' | 'camoufox';
+export interface NativeSettings { locale: string; timezone: string }
+export interface EngineState { status: 'checking' | 'missing' | 'installing' | 'ready' | 'error'; version?: string; error?: string }
 export interface Profile {
   id: string; name: string; notes: string; tags: string[]; proxyId: string | null;
   startUrl: string; restoreSessionCookies: boolean; createdAt: string; updatedAt: string;
   lastOpenedAt: string | null;
+  engine?: BrowserEngine; nativeSettings?: NativeSettings;
 }
 export interface ProfileDraft {
   id?: string; name: string; notes?: string; tags?: string[]; proxyId?: string | null;
   startUrl?: string; restoreSessionCookies?: boolean;
+  engine?: BrowserEngine; nativeSettings?: NativeSettings;
 }
 export interface ProxyDraft {
   id?: string; name: string; protocol: ProxyProtocol; host: string; port: number;
@@ -25,7 +30,7 @@ export interface ProxyCheck { status: 'checking' | 'ok' | 'error'; ip?: string; 
 export interface WorkspaceSnapshot {
   profiles: Profile[]; proxies: ProxyInfo[]; settings: Settings; sites: Site[]; groups: string[];
   runtime: Record<string, RuntimeState>; proxyChecks: Record<string, ProxyCheck>;
-  queue: { pending: number; active: number }; dataPath?: string; version?: string; update?: UpdateState;
+  queue: { pending: number; active: number }; dataPath?: string; version?: string; update?: UpdateState; engine?: EngineState;
 }
 export interface PortableCookie {
   domain: string; name: string; value: string; path: string; secure: boolean;
@@ -58,6 +63,9 @@ export interface WorkspaceApi {
   revealData(): Promise<void>;
   checkUpdates(): Promise<void>;
   closeToUpdate(): Promise<void>;
+  installEngine(): Promise<void>;
+  saveSite(input: { name: string; url: string }): Promise<void>;
+  deleteSite(id: string): Promise<void>;
   onChange(listener: (snapshot: WorkspaceSnapshot) => void): () => void;
 }
 export interface BrowserTab { id: number; title: string; url: string; loading: boolean }

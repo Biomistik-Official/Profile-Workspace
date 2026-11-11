@@ -8,6 +8,30 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('preserves legacy engine ownership and refuses in-place conversion of existing accounts', async () => {
+    const { store } = await setup();
+    const old = await store.saveProfile({ name: 'Existing account' });
+    await expect(store.saveProfile({ ...old, engine: 'camoufox' } as any)).rejects.toThrow('движок');
+    expect(store.profile(old.id).engine ?? 'chromium').toBe('chromium');
+  });
+  it('persists native settings without resetting them during metadata edits', async () => {
+    const { store, file } = await setup();
+    const created = await store.saveProfile({ name: 'Native', engine: 'camoufox', nativeSettings: { locale: 'ru-RU', timezone: 'Europe/Berlin' } } as any);
+    await store.saveProfile({ id: created.id, name: 'Renamed', notes: 'Keep identity' });
+    const reopened = await WorkspaceStore.open(file, secrets);
+    expect(reopened.profile(created.id)).toMatchObject({ engine: 'camoufox', nativeSettings: { locale: 'ru-RU', timezone: 'Europe/Berlin' }, notes: 'Keep identity' });
+    for (const nativeSettings of [{ locale: 'bad', timezone: 'Europe/London' }, { locale: 'en-US', timezone: 'nowhere' }]) {
+      await expect(store.saveProfile({ name: 'Invalid', engine: 'camoufox', nativeSettings } as any)).rejects.toThrow();
+    }
+    await expect(store.saveProfile({ name: 'Invalid', engine: 'unknown' } as any)).rejects.toThrow();
+  });
+  it('refuses unknown stored engine names instead of routing an account into Chromium', async () => {
+    const { store, file } = await setup();
+    await store.saveProfile({ name: 'Native', engine: 'camoufox' });
+    const raw = JSON.parse(await readFile(file, 'utf8')); raw.profiles[0].engine = 'unknown';
+    await writeFile(file, JSON.stringify(raw));
+    await expect(WorkspaceStore.open(file, secrets)).rejects.toThrow('Данные сохранены');
+  });
   it('persists empty groups and keeps tags after their last assignment is removed', async () => {
     const { file, store } = await setup();
     await store.saveGroup({ name: 'Пустая' });

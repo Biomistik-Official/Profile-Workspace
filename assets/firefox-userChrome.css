@@ -1,0 +1,19 @@
+/* Vesper native browser chrome. Site content follows the dark color-scheme preference. */
+:root {
+  color-scheme: dark !important;
+  --lwt-accent-color: #101010 !important;
+  --lwt-text-color: #ffffff !important;
+  --toolbar-bgcolor: #161616 !important;
+  --toolbar-color: #ffffff !important;
+  --toolbar-field-background-color: #1c1c1c !important;
+  --toolbar-field-color: #ffffff !important;
+  --toolbar-field-focus-border-color: #ffc799 !important;
+  --lwt-selected-tab-background-color: #232323 !important;
+  --lwt-tab-text: #ffffff !important;
+  --urlbarView-highlight-background: #282828 !important;
+}
+#navigator-toolbox, #TabsToolbar, #PersonalToolbar { background-color: #101010 !important; color: #ffffff !important; }
+#nav-bar { background-color: #161616 !important; color: #ffffff !important; }
+.tab-background[selected] { background-color: #232323 !important; }
+#urlbar-background { background-color: #1c1c1c !important; }
+#urlbar[focused] #urlbar-background { border-color: #ffc799 !important; }
