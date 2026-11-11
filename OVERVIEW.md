@@ -12,6 +12,10 @@ Implemented Profile Workspace, a standalone Windows browser-profile manager. The
 
 The user approved the graphite/teal concept. UI/UX Pro Max's Minimalism & Swiss Style and bulk-selection guidance fit; its marketing-page layout suggestions did not fit and were discarded. [Running interface screenshot](docs/design/profile-workspace-running.png) uses fictional data in an isolated temporary workspace.
 
+## Version 2.2.1 — Google default search
+
+The user requested returning Google. Chromium search/new tabs, new-profile defaults and the private Camoufox search policy now use Google. Store opening atomically migrates only exact DuckDuckGo home URLs (with/without trailing slash) in default settings/profile start pages; account IDs, other metadata and custom URLs remain intact. Existing bookmarks and native identity/session ownership remain unchanged. The native policy adds Google explicitly and removes the old managed DuckDuckGo/None engines. Real Firefox search settings are checked by the native regression.
+
 ## Version 2.2.0 — native Camoufox backend
 
 New UI-created profiles default to Camoufox; legacy profiles without `engine` remain Chromium and cannot be converted in place. `core/store.ts` validates both loaded/submitted engine names and bounded native locale/timezone settings. There is no automatic migration of accounts, passwords or site storage between browser families.

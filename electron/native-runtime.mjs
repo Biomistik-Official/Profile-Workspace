@@ -40,8 +40,8 @@ async function writePolicies(sites) {
   let current = {};
   try { current = JSON.parse(await readFile(file, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const next = { ...current, policies: { ...current.policies, DisableAppUpdate: true,
-    SearchEngines: { Default: 'DuckDuckGo', DefaultPrivate: 'DuckDuckGo', Remove: ['None'],
-      Add: [{ Name: 'DuckDuckGo', Description: 'DuckDuckGo', Alias: '@duckduckgo', Method: 'GET', URLTemplate: 'https://duckduckgo.com/?q={searchTerms}' }] },
+    SearchEngines: { Default: 'Google', DefaultPrivate: 'Google', Remove: ['None', 'DuckDuckGo'],
+      Add: [{ Name: 'Google', Description: 'Google', Alias: '@google', Method: 'GET', URLTemplate: 'https://www.google.com/search?q={searchTerms}' }] },
     DisplayBookmarksToolbar: 'always',
     Bookmarks: sites.map(site => ({ Title: site.name, URL: site.url, Placement: 'toolbar', Folder: 'Profile Workspace' })),
   } };

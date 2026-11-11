@@ -60,7 +60,7 @@ test('native profiles preserve identity and account storage across restarts and 
       const db = new DatabaseSync(join(data, 'camoufox', id, 'browser', 'places.sqlite'), { readOnly: true });
       try { expect(db.prepare('SELECT count(*) AS count FROM moz_bookmarks b JOIN moz_places p ON b.fk=p.id WHERE p.url=?').get('https://example.org/workspace-shared')).toMatchObject({ count: 1 }); } finally { db.close(); }
       const search = readMozLz4(await readFile(join(data, 'camoufox', id, 'browser', 'search.json.mozlz4')));
-      expect(search.metaData.current || search.metaData.defaultEngineId || search.metaData.appDefaultEngineId).toMatch(/duckduckgo|ddg/i);
+      expect(search.metaData.current || search.metaData.defaultEngineId || search.metaData.appDefaultEngineId).toMatch(/google/i);
     };
     await checkBrowserDefaults(ids[0]);
     const cookies = await manager.evaluate(id => window.workspace.cookies(id), ids[0]);

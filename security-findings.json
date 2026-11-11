@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-11-native-camoufox-2.2.0",
+  "scan_id": "scan-2026-11-11-google-2.2.1",
   "scan_date": "2026-11-11",
   "scan_type": "staged",
-  "commit_range": "6557e3a..staged",
+  "commit_range": "6723301..staged",
   "pr_number": null,
   "threat_model_version": "1.2.0",
   "findings": [],
@@ -22,17 +22,16 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 59
+    "files_analyzed": 12
   },
   "verification": {
-    "source_review": "Reviewed native utility IPC, immutable and validated engine ownership, private engine installation/policy writes, cookie conversion/restoration/import rollback, proxy routing, pending saves, timeout/late-response cleanup and new manager bookmark methods. Existing manager sender/main-frame guards remain mandatory. No arbitrary shell, SQL or dynamic HTML sink introduced in production; profile CSS content is string-escaped and all generated paths derive from validated IDs.",
-    "review_fixes": "Independent review drove timeout ownership retention/confirmed-stop cleanup, event/direct-save mutation locks, restore toggle semantics and serialized policy writes with unique temporary names. Native runtime status and packaging imports verified.",
-    "secret_scan": "57 staged source/artifact paths scanned for private keys, GitHub/AWS token patterns and private-data path segments; no potential secrets found. Test proxy/password/cookie literals are synthetic localhost fixtures. Unrelated landing directory, real userData, backups, engine cache and generated build outputs are excluded.",
+    "source_review": "Reviewed Google URL constants/query encoding, serialized Firefox policies and exact-match DuckDuckGo home migration using atomic store persistence. Profile IDs, timestamps, proxy secrets, bookmarks and custom URLs are preserved. No new IPC, shell/SQL/template sink or authorization changes.",
+    "review_fixes": "No blocking findings in this patch. Existing trust boundaries unchanged.",
+    "secret_scan": "Staged source scan excludes unrelated landing directory, real userData, backups, engine cache, credentials and generated build outputs. Tests use synthetic account metadata.",
     "instructions_review": "New plans and documentation describe authorized implementation and contain no instructions to exfiltrate secrets or override runtime trust boundaries.",
-    "dependencies": "Pinned Camoufox0.5.9 and compatible Playwright-core1.62.0; compatible MIT UA-parser1.0.41 override. npm audit --omit=dev reports zero vulnerabilities. Third-party notices retained.",
-    "release_manifest": "Version2.2.0, installer byte size and SHA512 match latest.yml; SHA256SUMS generated for installer, blockmap and manifest.",
-    "tests": "33 unit,30 development Electron,29 packaged manager/legacy and3 packaged native scenarios passed. Final native run uses the exact installed ASAR; live titlebar icon peach and511 account data hashes unchanged.",
-    "installation": "Installer exit0, installed ASAR SHA256 matches tested package, version2.2.0.0,15 profiles6 proxies6 shared bookmarks retained. Verified full backup34454 files remains outside publication."
+    "dependencies": "No dependency changes, package version only. npm audit --omit=dev reports zero vulnerabilities.",
+    "release_manifest": "Version2.2.1, installer byte size and SHA512 match latest.yml; SHA256SUMS generated for installer, blockmap and manifest.",
+    "tests": "35 unit and29 packaged manager/Chromium scenarios passed. Native regression verifies Google in saved Firefox search settings, bookmarks, identity and account storage; authenticated SOCKS5 regression passed."
   },
   "limitations": [
     "Source review and dependency audit do not prove absence of vulnerabilities. Windows runtime/unsigned release/upstream engine are trusted. Abrupt browser/OS loss may lose changes since the last native snapshot. Real provider-account acceptance and a separate clean machine were not tested."

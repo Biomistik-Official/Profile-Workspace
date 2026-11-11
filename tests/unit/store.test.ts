@@ -8,6 +8,18 @@ const secrets = { seal: async (s: string) => Buffer.from(s).toString('base64'), 
 afterEach(async () => { await Promise.all(paths.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function setup() { const dir = await mkdtemp(join(tmpdir(), 'workspace-unit-')); paths.push(dir); const file = join(dir, 'workspace.json'); return { file, store: await WorkspaceStore.open(file, secrets) }; }
 describe('workspace persistence', () => {
+  it('returns DuckDuckGo default home pages to Google without changing account metadata or custom pages', async () => {
+    const { store, file } = await setup();
+    const defaultProfile = await store.saveProfile({ name: 'Default', startUrl: 'https://duckduckgo.com/', notes: 'Keep note', tags: ['Work'] });
+    const custom = await store.saveProfile({ name: 'Custom', startUrl: 'https://example.com/account' });
+    const before = JSON.parse(await readFile(file, 'utf8')); before.settings.defaultUrl = 'https://duckduckgo.com/';
+    await writeFile(file, JSON.stringify(before));
+    const loaded = await WorkspaceStore.open(file, secrets);
+    expect(loaded.snapshot().settings.defaultUrl).toBe('https://www.google.com/');
+    expect(loaded.profile(defaultProfile.id)).toEqual({ ...defaultProfile, startUrl: 'https://www.google.com/' });
+    expect(loaded.profile(custom.id)).toEqual(custom);
+    expect(JSON.parse(await readFile(file, 'utf8')).profiles).toEqual(loaded.snapshot().profiles);
+  });
   it('preserves legacy engine ownership and refuses in-place conversion of existing accounts', async () => {
     const { store } = await setup();
     const old = await store.saveProfile({ name: 'Existing account' });

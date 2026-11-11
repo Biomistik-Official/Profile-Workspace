@@ -7,7 +7,7 @@ export function ProfileForm({ profile, proxies, existingTags, defaultUrl, save, 
   const [locale, setLocale] = useState(profile?.nativeSettings?.locale ?? 'en-US');
   const [timezone, setTimezone] = useState(profile?.nativeSettings?.timezone ?? 'Europe/London');
   const [name, setName] = useState(profile?.name ?? ''); const [notes, setNotes] = useState(profile?.notes ?? '');
-  const [tags, setTags] = useState(profile?.tags.join(', ') ?? ''); const [url, setUrl] = useState(profile?.startUrl ?? (defaultUrl === 'https://www.google.com/' ? 'https://duckduckgo.com/' : defaultUrl));
+  const [tags, setTags] = useState(profile?.tags.join(', ') ?? ''); const [url, setUrl] = useState(profile?.startUrl ?? (defaultUrl === 'https://duckduckgo.com/' ? 'https://www.google.com/' : defaultUrl));
   const [proxyId, setProxyId] = useState(profile?.proxyId ?? ''); const [restore, setRestore] = useState(profile?.restoreSessionCookies ?? true);
   const [error, setError] = useState(''); const [saving, setSaving] = useState(false);
   async function submit(e: FormEvent) { e.preventDefault(); setSaving(true); setError(''); try { await save({ id: profile?.id, name, notes, engine, ...(engine === 'camoufox' ? { nativeSettings: { locale, timezone } } : {}), tags: tags.split(',').map(t => t.trim()).filter(Boolean), startUrl: url, proxyId: proxyId || null, restoreSessionCookies: restore }); close(); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } }

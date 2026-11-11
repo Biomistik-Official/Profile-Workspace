@@ -13,7 +13,7 @@ const defaultSites: Site[] = [
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/' },
   { id: 'supercell', name: 'Supercell Creators', url: 'https://creators.supercell.com/' },
 ];
-const defaults: Settings = { maxConcurrent: 3, launchDelayMs: 600, defaultUrl: 'https://duckduckgo.com/' };
+const defaults: Settings = { maxConcurrent: 3, launchDelayMs: 600, defaultUrl: 'https://www.google.com/' };
 export class WorkspaceStore {
   private tail: Promise<unknown> = Promise.resolve();
   private constructor(private file: string, private codec: SecretCodec, private data: Data) {}
@@ -30,7 +30,13 @@ export class WorkspaceStore {
     }
     data.sites ??= structuredClone(defaultSites);
     data.groups = [...new Set([...(data.groups ?? []), ...data.profiles.flatMap(p => p.tags)])];
-    return new WorkspaceStore(file, codec, data);
+    let searchDefaultsChanged = false;
+    const isPreviousHome = (url: string) => ['https://duckduckgo.com/', 'https://duckduckgo.com'].includes(url);
+    if (isPreviousHome(data.settings.defaultUrl)) { data.settings.defaultUrl = defaults.defaultUrl; searchDefaultsChanged = true; }
+    for (const profile of data.profiles) if (isPreviousHome(profile.startUrl)) { profile.startUrl = defaults.defaultUrl; searchDefaultsChanged = true; }
+    const store = new WorkspaceStore(file, codec, data);
+    if (searchDefaultsChanged) await store.mutate(() => {});
+    return store;
   }
   snapshot(): WorkspaceSnapshot {
     return structuredClone({ profiles: this.data.profiles, proxies: this.data.proxies.map(({ secret: _, ...p }) => p), settings: this.data.settings, sites: this.data.sites!, groups: this.data.groups!, runtime: {}, proxyChecks: {}, queue: { active: 0, pending: 0 } });
