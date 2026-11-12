@@ -83,7 +83,9 @@
       "node_modules/@impit/**",
       "node_modules/playwright-core/**",
       "dist-electron/electron/camoufox-worker.mjs",
-      "dist-electron/electron/native-runtime.mjs"
+      "dist-electron/electron/native-runtime.mjs",
+      "dist-electron/electron/extension-runtime.mjs",
+      "assets/extensions/**"
     ]
   }
 }

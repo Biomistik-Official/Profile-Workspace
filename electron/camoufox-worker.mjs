@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Camoufox, launchOptions } from 'camoufox';
 import { fileURLToPath } from 'node:url';
 import { runtimeExecutable, runtimeStatus, installRuntime, syncPolicies } from './native-runtime.mjs';
+import { ensureCookieEditor } from './extension-runtime.mjs';
 
 import { camouConfigBlob } from 'camoufox/dist/utils.js';
 
@@ -48,7 +49,10 @@ async function openContext(args, headless) {
   try { identity = JSON.parse(await readFile(identityPath, 'utf8')); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   const settings = profile.nativeSettings ?? { locale: 'en-US', timezone: 'Europe/London' };
+  const cookieEditor = await ensureCookieEditor(root);
   const config = { ...(identity?.config ?? {}), timezone: settings.timezone };
+  // Addon paths are launch-time values, never inherited from a previous run.
+  delete config.addons;
   const chrome = join(base, 'browser', 'chrome'); await mkdir(chrome, { recursive: true });
   const chromeCSS = await readFile(fileURLToPath(new URL('../../assets/firefox-userChrome.css', import.meta.url)), 'utf8');
   await writeFile(join(chrome, 'userChrome.css'), chromeCSS + `\n#TabsToolbar::before { content: ${JSON.stringify(profile.name)}; display: flex; align-items: center; padding: 0 12px; color: #ffc799; max-width: 200px; overflow: hidden; font-size: 12px; }`);
@@ -56,6 +60,7 @@ async function openContext(args, headless) {
   for (const key of Object.keys(config)) if (key.startsWith('locale:') || key === 'navigator.language' || key === 'headers.Accept-Language') delete config[key];
   const options = await launchOptions({ executable_path: runtimeExecutable, os: 'windows', headless: false, locale: settings.locale,
     config, block_webrtc: true, enable_cache: true, exclude_addons: ['UBO'], window: [1180, 760],
+    addons: cookieEditor ? [cookieEditor] : [],
     // A hidden cookie operation must not initiate background direct network requests.
     proxy: proxy ?? (headless ? { server: 'http://127.0.0.1:1' } : undefined),
     firefox_user_prefs: {

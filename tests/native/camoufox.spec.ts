@@ -63,6 +63,10 @@ test('native profiles preserve identity and account storage across restarts and 
       expect(search.metaData.current || search.metaData.defaultEngineId || search.metaData.appDefaultEngineId).toMatch(/google/i);
     };
     await checkBrowserDefaults(ids[0]);
+    await expect.poll(async () => {
+      try { return JSON.parse(await readFile(join(data, 'camoufox', ids[0], 'browser', 'extension-preferences.json'), 'utf8')); }
+      catch { return {}; }
+    }).toHaveProperty('{c3c10168-4186-445c-9c5b-63f12b8e2c87}');
     const cookies = await manager.evaluate(id => window.workspace.cookies(id), ids[0]);
     expect(cookies.map(c => c.name)).toEqual(expect.arrayContaining(['native_sid', 'session_sid']));
     await application.evaluate(({ safeStorage }) => {
