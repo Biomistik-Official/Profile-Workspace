@@ -1,7 +1,7 @@
 {
   "name": "profile-workspace",
   "productName": "Profile Workspace",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "private": true,
   "description": "Local browser profiles, cookies and proxies without subscriptions",
   "author": "Biomistik",
@@ -85,6 +85,7 @@
       "dist-electron/electron/camoufox-worker.mjs",
       "dist-electron/electron/native-runtime.mjs",
       "dist-electron/electron/extension-runtime.mjs",
+      "dist-electron/electron/academy/**",
       "assets/extensions/**"
     ]
   }

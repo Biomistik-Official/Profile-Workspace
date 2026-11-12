@@ -39,8 +39,10 @@ export interface PortableCookie {
 }
 export interface CookieParseResult { cookies: PortableCookie[]; errors: string[]; warnings: string[] }
 export interface CookiePreview { token: string; fileName: string; count: number; errors: string[]; warnings: string[] }
+export interface AcademyRequest { id:string; action:'analyze'|'quiz'|'claim'|'cancel'; slug?:string; operationId?:string }
 export type CookieFormat = 'json' | 'netscape';
 export interface WorkspaceApi {
+  academy(input:AcademyRequest):Promise<any>;
   snapshot(): Promise<WorkspaceSnapshot>;
   saveProfile(input: ProfileDraft): Promise<void>;
   saveGroup(input: { name: string; previousName?: string }): Promise<void>;

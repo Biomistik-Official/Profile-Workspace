@@ -7,9 +7,12 @@ import { runtimeExecutable, runtimeStatus, installRuntime, syncPolicies } from '
 import { ensureCookieEditor } from './extension-runtime.mjs';
 
 import { camouConfigBlob } from 'camoufox/dist/utils.js';
+import {academyAction,AcademyError} from './academy/engine.mjs';
+import {AcademyOwnership,AcademyCancelled} from './academy/ownership.mjs';
 
 const contexts = new Map();
 const tails = new Map();
+const academyOwnership=new AcademyOwnership();
 const send = message => process.parentPort ? process.parentPort.postMessage(message) : process.send?.(message);
 function portable(cookie) {
   return { domain: cookie.domain, name: cookie.name, value: cookie.value, path: cookie.path,
@@ -59,7 +62,7 @@ async function openContext(args, headless) {
   // Locale-related native values must follow deliberate edits, not the old saved locale.
   for (const key of Object.keys(config)) if (key.startsWith('locale:') || key === 'navigator.language' || key === 'headers.Accept-Language') delete config[key];
   const options = await launchOptions({ executable_path: runtimeExecutable, os: 'windows', headless: false, locale: settings.locale,
-    config, block_webrtc: true, enable_cache: true, exclude_addons: ['UBO'], window: [1180, 760],
+    config, main_world_eval:true, block_webrtc: true, enable_cache: true, exclude_addons: ['UBO'], window: [1180, 760],
     addons: cookieEditor ? [cookieEditor] : [],
     // A hidden cookie operation must not initiate background direct network requests.
     proxy: proxy ?? (headless ? { server: 'http://127.0.0.1:1' } : undefined),
@@ -105,6 +108,14 @@ async function operation(command, args) {
     await capture(entry, true); return;
   }
   if (command === 'focus') { await contexts.get(id)?.context.pages()[0]?.bringToFront(); return; }
+  if(command==='academy') {
+    const entry=contexts.get(id);
+    if(!entry||entry.closing||entry.closed)throw new AcademyError('Откройте профиль Camoufox перед запуском Academy.');
+    return academyOwnership.run(id,args.academy.operationId,async()=>{
+      if(!entry.academyPage||entry.academyPage.isClosed())entry.academyPage=await entry.context.newPage();
+      return entry.academyPage;
+    },page=>academyAction(page,args.academy));
+  }
   if (command === 'stop') {
     const entry = contexts.get(id); if (!entry) return [];
     entry.closing = true; clearInterval(entry.timer);
@@ -132,10 +143,14 @@ async function operation(command, args) {
 function receive(message) {
   const { requestId, command, args } = message;
   const key = args?.profile?.id ?? '_engine';
+  if(command==='cancelAcademy') {
+    void academyOwnership.cancel(key,args.operationId).then(result=>send({requestId,result}));
+    return;
+  }
   const task = (tails.get(key) ?? Promise.resolve()).then(() => operation(command, args));
   tails.set(key, task.catch(() => {}));
-  void task.then(result => send({ requestId, result }), () => send({ requestId,
-    error: command === 'install' ? 'Не удалось установить Camoufox. Проверьте соединение и повторите установку.' :
+  void task.then(result => send({ requestId, result }), error => send({ requestId,
+    error: command==='academy'&&(error instanceof AcademyError||error instanceof AcademyCancelled) ? error.message.slice(0,4000) : command === 'install' ? 'Не удалось установить Camoufox. Проверьте соединение и повторите установку.' :
       command === 'status' ? 'Не удалось проверить движок.' : 'Camoufox: операция не выполнена. Проверьте установку движка, параметры профиля и прокси.' }));
 }
 if (process.parentPort) process.parentPort.on('message', event => receive(event.data));

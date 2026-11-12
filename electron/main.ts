@@ -12,6 +12,7 @@ import { startSocksBridge, type SocksBridge } from './socks-bridge';
 import { autoUpdater } from 'electron-updater';
 import { UpdateController } from './updates';
 import { CamoufoxController } from './camoufox';
+import {validateAcademyRequest} from '../core/academy';
 
 app.setName('Profile Workspace');
 nativeTheme.themeSource = 'dark';
@@ -260,6 +261,12 @@ function handle(method: string, fn: (...args: any[]) => unknown): void {
   ipcMain.handle(`workspace:${method}`, async (event, ...args) => { trusted(event); const result = await fn(...args); publish(); return result; });
 }
 function registerApi(): void {
+  handle('academy',async(input:unknown)=>{
+    const request=validateAcademyRequest(input);
+    const profile=store.profile(request.id);
+    if(profile.engine!=='camoufox'||runtime[profile.id]?.status!=='running'||mutations.has(profile.id))throw new Error('Откройте доступный профиль Camoufox перед запуском Academy.');
+    return native.academy(profile,request);
+  });
   handle('snapshot', snapshot);
   handle('installEngine', () => native.install(store.snapshot().sites));
   handle('saveSite', (input: { name: string; url: string }) => store.saveSite(input));

@@ -5,6 +5,7 @@ const subscribe = (channel: string) => (listener: (data: unknown) => void) => {
   ipcRenderer.on(channel, handler); return () => { ipcRenderer.removeListener(channel, handler); };
 };
 contextBridge.exposeInMainWorld('workspace', {
+  academy:call('academy'),
   ...Object.fromEntries(['snapshot', 'saveProfile', 'duplicateProfile', 'deleteProfiles', 'saveProxy', 'deleteProxy', 'checkProxy', 'saveSettings', 'launch', 'stop', 'cancelQueue', 'bulkUpdate', 'cookies', 'previewCookies', 'importCookies', 'exportCookies', 'clearCookies', 'revealData'].map(method => [method, call(method)])),
   onChange: subscribe('workspace:changed'),
   installEngine: call('installEngine'), saveSite: call('saveSite'), deleteSite: call('deleteSite'),

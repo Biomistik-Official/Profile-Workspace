@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-11-11-google-2.2.1",
-  "scan_date": "2026-11-11",
+  "scan_id": "scan-2026-11-12-academy-main",
+  "scan_date": "2026-11-12",
   "scan_type": "staged",
-  "commit_range": "6723301..staged",
+  "commit_range": "3666517..staged",
   "pr_number": null,
   "threat_model_version": "1.2.0",
   "findings": [],
@@ -22,18 +22,14 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 12
+    "files_analyzed": 24
   },
   "verification": {
-    "source_review": "Reviewed Google URL constants/query encoding, serialized Firefox policies and exact-match DuckDuckGo home migration using atomic store persistence. Profile IDs, timestamps, proxy secrets, bookmarks and custom URLs are preserved. No new IPC, shell/SQL/template sink or authorization changes.",
-    "review_fixes": "No blocking findings in this patch. Existing trust boundaries unchanged.",
-    "secret_scan": "Staged source scan excludes unrelated landing directory, real userData, backups, engine cache, credentials and generated build outputs. Tests use synthetic account metadata.",
-    "instructions_review": "New plans and documentation describe authorized implementation and contain no instructions to exfiltrate secrets or override runtime trust boundaries.",
-    "dependencies": "No dependency changes, package version only. npm audit --omit=dev reports zero vulnerabilities.",
-    "release_manifest": "Version2.2.1, installer byte size and SHA512 match latest.yml; SHA256SUMS generated for installer, blockmap and manifest.",
-    "tests": "35 unit and29 packaged manager/Chromium scenarios passed. Native regression verifies Google in saved Firefox search settings, bookmarks, identity and account storage; authenticated SOCKS5 regression passed."
-  },
-  "limitations": [
-    "Source review and dependency audit do not prove absence of vulnerabilities. Windows runtime/unsigned release/upstream engine are trusted. Abrupt browser/OS loss may lose changes since the last native snapshot. Real provider-account acceptance and a separate clean machine were not tested."
-  ]
+    "source_review": "Reviewed the Academy validator, manager sender/frame guard, Camoufox controller/worker dispatch, fixed-site bank/DOM/quiz/claim operations, scoped cancellation, deadlines, packaging, tests and changed documentation. No arbitrary renderer-supplied URL or script is accepted. Native profiles retain existing context/proxy/session ownership.",
+    "trust_boundary": "Camoufox main_world_eval permits trusted fixed code to read delivered Academy state. Website strings remain data. No public automation endpoint or Node/manager IPC is exposed to remote pages. Profile IDs resolve through the store; cancellation is scoped to profile and operation UUID.",
+    "secret_scan": "No matching credential/private-key patterns in new Academy modules, tests and documents. Reviewed tracked diff adds no credentials. Fixtures use synthetic storage. landing/ and real account data excluded.",
+    "injection_review": "No new SQL or shell execution. Serialized function source is fixed local code; course arguments use JSON serialization. Plans/docs contain no instruction to disclose secrets or change runtime permissions.",
+    "tests": "46 unit tests passed; production build passed; Academy manager IPC test passed; native Camoufox Academy fixture passed (three quizzes, saved-result skip, two rewards, unknown-question refusal and hung-tab interruption). Live accounts were not exercised in this verification.",
+    "publication": "Source commit only. GitHub release notes are not created or modified. Existing landing/ directory remains untracked."
+  }
 }

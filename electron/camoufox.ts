@@ -1,6 +1,7 @@
 import { utilityProcess, type UtilityProcess } from 'electron';
 import { join } from 'node:path';
-import type { EngineState, PortableCookie, Profile, Site } from '../shared/types';
+import {randomUUID} from 'node:crypto';
+import type { AcademyRequest, EngineState, PortableCookie, Profile, Site } from '../shared/types';
 
 export class CamoufoxController {
   private worker?: UtilityProcess;
@@ -11,6 +12,7 @@ export class CamoufoxController {
   private operations = new Set<Promise<unknown>>();
   private busy = new Map<string, number>();
   private saveFailure?: Error;
+  private academyPending=new Set<string>();
   state: EngineState = { status: 'checking' };
   constructor(private root: string, private changed: () => void,
     private saved: (id: string, cookies: PortableCookie[], ending: boolean) => Promise<void>, private closed: (id: string) => void) {}
@@ -71,6 +73,14 @@ export class CamoufoxController {
     catch (error) { if (!(error as Error & { pending?: boolean }).pending) this.running.delete(profile.id); throw error; }
   }
   isRunning(id: string): boolean { return this.running.has(id); }
+  async academy(profile:Profile,input:AcademyRequest):Promise<unknown> {
+    if(!this.isRunning(profile.id))throw new Error('Профиль Camoufox должен быть запущен.');
+    if(input.action==='cancel')return this.request('cancelAcademy',{profile,operationId:input.operationId});
+    if(this.academyPending.has(profile.id))throw new Error('В этом профиле уже выполняется Academy.');
+    this.academyPending.add(profile.id);
+    try{return await this.request('academy',{profile,academy:{...input,operationId:input.operationId??randomUUID()}});}
+    finally{this.academyPending.delete(profile.id);}
+  }
   isBusy(id: string): boolean { return this.busy.has(id); }
   focus(profile: Profile): void { void this.request('focus', { profile }).catch(() => {}); }
   async stop(profile: Profile): Promise<void> { if (this.running.has(profile.id)) await this.request('stop', { profile }); await this.flush(); }
